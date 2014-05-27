@@ -5,10 +5,12 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLConnection;
-import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.List;
+
+import monitor.DataBase.User;
 
 public class Monitor {
 
@@ -23,11 +25,16 @@ public class Monitor {
 	
 	/// private fields
 	private RestServer restServer;
+	private DataBase dataBase;
 	
 	/// contructor
 	public Monitor() throws IOException{
-		restServer = new RestServer();
+		dataBase = new DataBase();
+		restServer = new RestServer(dataBase);
 		readParamteres("configure.properties");
+		//registerInCatalog();
+		//changeMonitorEntryInCatalog();
+		//deleteMonitorEntryInCatalog();
 	}
 	
 	/// private mtehods
@@ -37,17 +44,64 @@ public class Monitor {
 	private void registerInCatalog(){	
 		try {
 			// Construct data
-		    //String data = URLEncoder.encode("monitorIP", "UTF-8") + "=" + URLEncoder.encode(restServer.server.getAddress().getAddress().getHostAddress(), "UTF-8");
-		    //data += "&" + URLEncoder.encode("key2", "UTF-8") + "=" + URLEncoder.encode("value2", "UTF-8");
-			//String data = "{name:"
-		    //System.out.println(data);
-//			URL url = new URL(catalogURL);
-//			URLConnection conn = url.openConnection();
-//			conn.setDoOutput(true);
-//		    OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
-//		    wr.write(data);
-//		    wr.flush();
-//		    wr.close();
+			String data = "{\"name\":\""+monitorName+"\",\"ip\":\""+restServer.monitorIP+":8889\"}";
+			String urlString = catalogURL+"/monitors";
+			URL url = new URL(urlString);
+			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			conn.setRequestMethod("POST");
+			conn.setDoOutput(true);
+		    OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
+		    wr.write(data);
+		    wr.flush();
+		    wr.close();
+		    int responseCode = conn.getResponseCode();
+			System.out.println("\nSending 'POST' request to URL : " + urlString);
+			System.out.println("Response Code : " + responseCode);   
+		} catch (Exception e) {
+			System.err.println("Monitor Exception in registerInCatalog");
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Change Monitor ip in catalog
+	 */
+	private void changeMonitorEntryInCatalog(){
+		try {
+			// Construct data
+			String data = "{\"ip\":\"89.68.69.22:8889\"}";
+			String urlString = catalogURL+"/monitors/Real_Monitor_that_should_work";
+			URL url = new URL(urlString);
+			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			conn.setRequestMethod("POST");
+			conn.setDoOutput(true);
+		    OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
+		    wr.write(data);
+		    wr.flush();
+		    wr.close();
+		    int responseCode = conn.getResponseCode();
+			System.out.println("\nSending 'POST' request to URL : " + urlString);
+			System.out.println("Response Code : " + responseCode);   
+		} catch (Exception e) {
+			System.err.println("Monitor Exception in registerInCatalog");
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Delete Monitor Entry in Catalog
+	 */
+	private void deleteMonitorEntryInCatalog(){
+		try {
+			// Construct data
+			String urlString = catalogURL+"/monitors/"+monitorName;
+			URL url = new URL(urlString);
+			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			conn.setRequestMethod("DELETE");
+			conn.setDoOutput(true);
+		    int responseCode = conn.getResponseCode();
+			System.out.println("\nSending 'DELETE' request to URL : " + urlString);
+			System.out.println("Response Code : " + responseCode);   
 		} catch (Exception e) {
 			System.err.println("Monitor Exception in registerInCatalog");
 			e.printStackTrace();
@@ -58,7 +112,6 @@ public class Monitor {
      * READABLE parameters in runtime - if necessary expand for more
      */
     private String monitorName, catalogURL;
-    private ArrayList<String> usersList = new ArrayList<String>();
     
     /**
      * READ parameters in runtime
@@ -85,9 +138,21 @@ public class Monitor {
     	{
     		monitorName = buffer.readLine();
     		catalogURL = buffer.readLine();
+    		List<User> users = dataBase.getUsers();
+    		boolean exists = false;
     		while((line = buffer.readLine()) != null)
     		{
-    			usersList.add(line); 
+    			String [] userData = line.split(":");
+    			exists = false;
+    			for(User user : users){
+    				if (user.login.equals(userData[0])){
+    					exists = true;
+    					break;
+    				}
+    			}
+    			
+    			if (!exists)
+    				dataBase.addUser(dataBase.new User (userData[0],userData[1])); 
     	    }
     	} 
     	catch (IOException e)
@@ -107,5 +172,6 @@ public class Monitor {
 	    	e.printStackTrace();
 	        System.exit(3);
 	    }
+	    
     }
 }
