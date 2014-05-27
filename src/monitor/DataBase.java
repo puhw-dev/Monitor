@@ -8,6 +8,8 @@ import java.sql.Statement;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.sqlite.JDBC;
+
 /**
  * Class to handle SQLite data base.
  * There are 4 tables in db: Host, Sensor, Metric and Measurement.  
@@ -53,8 +55,10 @@ public class DataBase {
         		+ "(id INTEGER PRIMARY KEY AUTOINCREMENT, hostname TEXT, ip TEXT)";
         String createSensor = "CREATE TABLE IF NOT EXISTS sensor"
         		+ "(id INTEGER PRIMARY KEY AUTOINCREMENT, sensorname TEXT, hostid  INTEGER)";
+//        String createMetric = "CREATE TABLE IF NOT EXISTS metric"
+//                + "(id INTEGER PRIMARY KEY AUTOINCREMENT, sensorID  INTEGER, time TEXT, metricname TEXT, value TEXT)";
         String createMetric = "CREATE TABLE IF NOT EXISTS metric"
-        		+ "(id INTEGER PRIMARY KEY AUTOINCREMENT, sensorID  INTEGER, name TEXT)";
+        		+ "(id INTEGER PRIMARY KEY AUTOINCREMENT, sensorID  INTEGER, metricname TEXT)";
         String createMeasurement = "CREATE TABLE IF NOT EXISTS measurement"
         		+ "(id INTEGER PRIMARY KEY AUTOINCREMENT, metricID INTEGER, time TEXT, value REAL)";
         try {
@@ -63,7 +67,7 @@ public class DataBase {
             stat.execute(createHost);
             stat.execute(createSensor);
             stat.execute(createMetric);
-            stat.execute(createMeasurement);
+            //stat.execute(createMeasurement);
         } catch (SQLException e) {
             System.err.println("Error in creating tables");
             e.printStackTrace();
@@ -129,7 +133,7 @@ public class DataBase {
     	Host host = null;
     	try {
         	Statement stat = conn.createStatement();
-        	ResultSet result = stat.executeQuery("SELECT * FROM host where hostname="+hostName);
+        	ResultSet result = stat.executeQuery("SELECT * FROM host where hostname='"+hostName+"'");
         	if(result.next()){
         		host = new Host(result.getInt("id"), result.getString("hostname"), result.getString("ip"));
         	}
@@ -176,7 +180,7 @@ public class DataBase {
     	Sensor sensor = null;
     	try {
         	Statement stat = conn.createStatement();
-        	ResultSet result = stat.executeQuery("SELECT * FROM sensor WHERE sensorname="+sensorName
+        	ResultSet result = stat.executeQuery("SELECT * FROM sensor WHERE sensorname='"+sensorName+"'"
         			+" AND hostID="+hostID);
         	if(result.next()){
          		sensor = new Sensor(result.getInt("id"), result.getString("sensorName"), result.getInt("hostid"));
@@ -203,7 +207,7 @@ public class DataBase {
             String name;
             while(result.next()) {
                 id = result.getInt("id");
-                name = result.getString("name");
+                name = result.getString("metricname");
                 metrics.add(new Metric(id, sensorID, name));
             }
             stat.close();
@@ -224,10 +228,10 @@ public class DataBase {
     	Metric metric = null;
     	try {
         	Statement stat = conn.createStatement();
-        	ResultSet result = stat.executeQuery("SELECT * FROM metric WHERE metricname="+metricName
+        	ResultSet result = stat.executeQuery("SELECT * FROM metric WHERE metricname='"+metricName+"'"
         			+" AND sensorID="+sensorID);
         	if(result.next()){
-         		metric = new Metric(result.getInt("id"), result.getInt("sensorid"), result.getString("name"));
+         		metric = new Metric(result.getInt("id"), result.getInt("sensorid"), result.getString("metricname"));
         	}
             stat.close();
         } catch (SQLException e) {
@@ -294,17 +298,31 @@ public class DataBase {
     	}
     }
     
+//  /**
+//  * Metric class represent Metric table in data base.
+//  */
+// class Metric {
+// 	public int id;
+// 	public int sensorID;
+// 	public String metricName;
+// 	Metric(int id, int sensorID, String metricName){
+// 		this.id = id;
+// 		this.sensorID = sensorID;
+// 		this.metricName = metricName;
+// 	}
+// }
+    
     /**
      * Metric class represent Metric table in data base.
      */
     class Metric {
     	public int id;
     	public int sensorID;
-    	public String name;
-    	Metric(int id, int sensorID, String name){
+    	public String metricName;
+    	Metric(int id, int sensorID, String metricName){
     		this.id = id;
     		this.sensorID = sensorID;
-    		this.name = name;
+    		this.metricName = metricName;
     	}
     }
     

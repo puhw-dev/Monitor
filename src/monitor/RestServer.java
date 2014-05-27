@@ -24,8 +24,8 @@ public class RestServer {
 	
 	/// constructor
 	public RestServer () throws IOException {
-		//System.out.println(InetAddress.getLocalHost());
-		server = HttpServer.create(new InetSocketAddress(InetAddress.getLocalHost(),8000), 0);
+		System.out.println(InetAddress.getLocalHost());
+		server = HttpServer.create(new InetSocketAddress(InetAddress.getLocalHost(),34899), 0);
 	    server.createContext("/", new MyHandler());
 	    server.setExecutor(null); // creates a default executor
 	    server.start();
@@ -142,8 +142,6 @@ public class RestServer {
         			for (DataBase.Sensor tmpSensor : dataBase.getSensors(host.id)){
         				tmpObj = new JSONObject();
         				tmpObj.put("sensorname", tmpSensor.sensorName);
-        				//tmpObj.put("owner", value);
-        				//tmpObj.put("rpm", value);
         				tmpObj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+tmpSensor.sensorName);
         				list.add(tmpObj);
         			}
@@ -155,10 +153,8 @@ public class RestServer {
 	    			sensorName = pathFragments[4];
 	    			host = dataBase.getHost(hostName);
 	    			sensor = dataBase.getSensor(host.id, sensorName);
+	    			obj.put("sensorname", sensor.sensorName);
 	    			obj.put("hostname", host.hostName); 
-	    			obj.put("sensorname", sensor.sensorName);			
-	    			//obj.put("owner", value);
-    				//obj.put("rpm", value);
 	    			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName);
 	    			break;
 	    		case 6: // path: {monitorURI}/hosts/{hostname]/sensors/{sensorname}/metrics
@@ -167,16 +163,16 @@ public class RestServer {
 	    			sensorName= pathFragments[4];
 	    			host = dataBase.getHost(hostName);
 	    			sensor = dataBase.getSensor(host.id, sensorName);
-	    			obj.put("hostname", host.hostName);
 	    			obj.put("sensorname", sensor.sensorName);
+	    			obj.put("hostname", host.hostName);	    			
 	    			//obj.put("owner", value);
     				//obj.put("rpm", value);
 	    			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName);
         			list = new JSONArray();
         			for (DataBase.Metric tmpMetric : dataBase.getMetrics(sensor.id)){
         				tmpObj = new JSONObject();
-        				tmpObj.put("name", tmpMetric.name);
-        				tmpObj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+tmpMetric.name);
+        				tmpObj.put("name", tmpMetric.metricName);
+        				tmpObj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+tmpMetric.metricName);
         				list.add(tmpObj);
         			}
         			obj.put("metrics", list);
@@ -191,13 +187,13 @@ public class RestServer {
 	    		 	metric = dataBase.getMetric(sensor.id, metricName);
 	    		 	obj.put("hostname", host.hostName);
 	    			obj.put("sensorname", sensor.sensorName);
-	    			obj.put("metricname", metric.name);
+	    			obj.put("metricname", metric.metricName);
 	    			//obj.put("owner", value);
     				//obj.put("rpm", value);
-    				obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+metric.name);
+    				obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+metric.metricName);
 	    			break;
 	    			
-	    		/*case 8: // path: {monitorURI}/hosts/{id]/sensors/{id}/metrics/{id}/measurements
+	    		/*case 8: // path: {monitorURI}/hosts/{hostname}/sensors/{sensorname}/metrics/{metric1};{metric2}/data[&n=20]
 	    			metricID = Integer.parseInt(pathFragments[6]);
 	    			obj.put("resource", "measurement");
         			list = new JSONArray();
