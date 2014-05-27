@@ -1,10 +1,14 @@
 package monitor;
 
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 
 public class Monitor {
 
@@ -18,12 +22,12 @@ public class Monitor {
 	}
 	
 	/// private fields
-	private String catalogURL = "http://MaciekSiczekCatalog:80/catalog";
 	private RestServer restServer;
 	
 	/// contructor
 	public Monitor() throws IOException{
 		restServer = new RestServer();
+		readParamteres("configure.properties");
 		//registerInCatalog();
 		// TODO  UDP SERVER
 	}
@@ -49,4 +53,59 @@ public class Monitor {
 			e.printStackTrace();
 		}
 	}
+	
+	/**
+     * READABLE parameters in runtime - if necessary expand for more
+     */
+    private String monitorName, catalogURL;
+    private ArrayList<String> usersList = new ArrayList<String>();
+    
+    /**
+     * READ parameters in runtime
+     * @param fileName
+     */
+    private void readParamteres(String fileName)
+    {
+    	String line = "";
+    	
+    	FileReader file = null;
+    	try 
+    	{
+    		file = new FileReader(fileName);
+		} 
+    	catch (FileNotFoundException e)
+    	{
+    		System.err.format("Exception occurred trying to open '%s'.", fileName);
+			e.printStackTrace();
+			System.exit(1);
+		}
+    	
+    	BufferedReader buffer = new BufferedReader(file);
+    	try 
+    	{
+    		monitorName = buffer.readLine();
+    		catalogURL = buffer.readLine();
+    		while((line = buffer.readLine()) != null)
+    		{
+    			usersList.add(line); 
+    	    }
+    	} 
+    	catch (IOException e)
+    	{
+    		System.err.format("Exception occurred trying to read '%s'.", fileName);
+    		e.printStackTrace();
+	        System.exit(2);
+    	}
+	    
+	    try 
+	    {
+	    	file.close();
+	    } 
+	    catch (IOException e) 
+	    {
+	    	System.err.format("Exception occurred trying to close '%s'.", fileName);
+	    	e.printStackTrace();
+	        System.exit(3);
+	    }
+    }
 }

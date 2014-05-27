@@ -1,11 +1,18 @@
 package monitor;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Scanner;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -49,7 +56,7 @@ public class RestServer {
         	String [] pathFragments = uri.getPath().split("/");
         	try {
 	        	switch (pathFragments.length){
-	        		case 8: // path: /hosts/{id]/sensors/{id}/metrics/{id}/measurements
+	        		case 8: // path: /hosts/{id}/sensors/{id}/metrics/{id}/measurements
 	        			if (!pathFragments[7].equals("measurements"))
 	        				throw new Exception("Error, wrong path syntax with 'measurements'");
 	        		case 7: // path: /hosts/{id]/sensors/{id}/metrics/{id}
@@ -104,7 +111,7 @@ public class RestServer {
         	JSONObject tmpObj = null;
         	JSONArray list = null;
         	
-        	String hostName=null, sensorName=null, metricName=null;
+        	String hostName=null, sensorName=null, metricName=null, dataNumber = null;
         	DataBase.Host host = null;
         	DataBase.Sensor sensor = null;
         	DataBase.Metric metric = null;
@@ -192,21 +199,50 @@ public class RestServer {
     				//obj.put("rpm", value);
     				obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+metric.metricName);
 	    			break;
+	    		case 8: // path: {monitorURI}/hosts/{hostname}/sensors/{sensorname}/metrics/{metric1};{metric2}/data[&n=20]
+	    			hostName = pathFragments[2];
+	    			host = dataBase.getHost(hostName);
+	    			obj.put("hostname", host.hostName);
 	    			
-	    		/*case 8: // path: {monitorURI}/hosts/{hostname}/sensors/{sensorname}/metrics/{metric1};{metric2}/data[&n=20]
-	    			metricID = Integer.parseInt(pathFragments[6]);
-	    			obj.put("resource", "measurement");
-        			list = new JSONArray();
-        			for (DataBase.Measurement measurement : dataBase.getMeasurements(metricID)){
-        				tmpObj = new JSONObject();
-        				tmpObj.put("id", measurement.id);
-        				tmpObj.put("hostID", measurement.metricID);
-        				tmpObj.put("time", measurement.time);
-        				tmpObj.put("value", measurement.value);
-        				list.add(tmpObj);
-        			}	
+	    			sensorName = pathFragments[4];
+	    			sensor = dataBase.getSensor(host.id, sensorName);
+	    			obj.put("sensorname", sensor.sensorName);
+	    			
+	    			dataNumber = pathFragments[7];
+	    			dataNumber = dataNumber.replaceAll("[^0-9]+", " ");
+	    			dataNumber = dataNumber.trim().split(" ")[0];
+	    			
+	    			double data = Double.parseDouble(dataNumber);
+	    			if(data > 0 || data <= 100)
+	    				;
+	    			else
+	    				data = 20;
+	    			
+	    			for(String tmpmetricName: pathFragments[6].split(";"))
+	    			{
+	    				metric = dataBase.getMetric(sensor.id, tmpmetricName);
+	    				obj.put("metricname", metric.metricName);
+	    			}
+	    			
+	    			
+	    			for(int i = 1; i <= data; ++i)
+	    			{
+		    			Integer metricID = i;//Integer.parseInt(pathFragments[6]);
+		    			obj.put("resource", "measurement");
+	        			list = new JSONArray();
+	        			for (DataBase.Measurement measurement : dataBase.getMeasurements(metricID))
+	        			{
+	        				tmpObj = new JSONObject();
+	        				tmpObj.put("id", measurement.id);
+	        				tmpObj.put("hostID", measurement.metricID);
+	        				tmpObj.put("time", measurement.time);
+	        				tmpObj.put("value", measurement.value);
+	        				list.add(tmpObj);
+	        			}
+	        			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+metric.metricName+"/data/"+list);
+	    			}
+
 	    			break;
-	    			*/
 	    	}
         	
         	return obj.toJSONString();
