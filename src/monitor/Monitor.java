@@ -18,13 +18,13 @@ public class Monitor {
 	}
 	
 	/// private fields
-	private String catalogURL = "http://MaciekSiczekCatalog:80/catalog";
+	private String catalogURL = "http://89.68.69.22:8889/";
 	private RestServer restServer;
 	
 	/// contructor
 	public Monitor() throws IOException{
 		restServer = new RestServer();
-		//registerInCatalog();
+		registerInCatalog();
 		// TODO  UDP SERVER
 	}
 	
@@ -35,15 +35,17 @@ public class Monitor {
 	private void registerInCatalog(){	
 		try {
 			// Construct data
-		    String data = URLEncoder.encode("monitorIP", "UTF-8") + "=" + URLEncoder.encode(restServer.server.getAddress().getAddress().getHostAddress(), "UTF-8");
+		    //String data = URLEncoder.encode("monitorIP", "UTF-8") + "=" + URLEncoder.encode(restServer.server.getAddress().getAddress().getHostAddress(), "UTF-8");
 		    //data += "&" + URLEncoder.encode("key2", "UTF-8") + "=" + URLEncoder.encode("value2", "UTF-8");
-			URL url = new URL(catalogURL);
-			URLConnection conn = url.openConnection();
-			conn.setDoOutput(true);
-		    OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
-		    wr.write(data);
-		    wr.flush();
-		    wr.close();
+			//String data = "{name:"
+		    //System.out.println(data);
+//			URL url = new URL(catalogURL);
+//			URLConnection conn = url.openConnection();
+//			conn.setDoOutput(true);
+//		    OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
+//		    wr.write(data);
+//		    wr.flush();
+//		    wr.close();
 		} catch (Exception e) {
 			System.err.println("Monitor Exception in registerInCatalog");
 			e.printStackTrace();
