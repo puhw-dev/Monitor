@@ -65,9 +65,9 @@ public class RestServer {
         	System.out.println(pathFragments.length);
         	try {
 	        	switch (pathFragments.length){
-	        		case 8: // path: /hosts/{hostname}/sensors/{sensorname}/metrics/{metricname}/measurements
-	        			if (!pathFragments[7].equals("measurements"))
-	        				throw new Exception("Error, wrong path syntax with 'measurements'");
+	        		case 8: // path: /hosts/{hostname}/sensors/{sensorname}/metrics/{metricname}/data
+	        			;//if (!pathFragments[7].equals("measurements"))
+	        			//	throw new Exception("Error, wrong path syntax with 'measurements'");
 	        		case 7: // path: /hosts/{hostname}/sensors/{sensorname}/metrics/{metricname}
 	        			//Integer.parseInt(pathFragments[6]);
 	        		case 6: // path: /hosts/{hostname}/sensors/{sensorname}/metrics
@@ -219,40 +219,43 @@ public class RestServer {
 	    			sensorName = pathFragments[4];
 	    			sensor = dataBase.getSensor(host.hostName, sensorName);
 	    			obj.put("sensorname", sensor.sensorName);
-	    			
-	    			dataNumber = pathFragments[7];
-	    			dataNumber = dataNumber.replaceAll("[^0-9]+", " ");
-	    			dataNumber = dataNumber.trim().split(" ")[0];
-	    			
-	    			double data = Double.parseDouble(dataNumber);
-	    			if(data > 0 || data <= 100)
-	    				;
-	    			else
-	    				data = 20;
-	    			
-	    			for(String tmpmetricName: pathFragments[6].split(";"))
-	    			{
-	    				metric = dataBase.getMetric(sensor.id, tmpmetricName);
-	    				obj.put("metricname", metric.metricName);
+	    			obj.put("owner", dataBase.getUser(sensor.userID).login);
+	    			obj.put("rpm", sensor.rpm);
+	    			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics");
+
+	    			int data = 20;
+	    			try{
+	    				if (pathFragments[7].split("=").length == 2)
+	    					data = Integer.parseInt(pathFragments[7].split("=")[1]);
 	    			}
+	    			catch (NumberFormatException e){
+	    				System.err.println("RestServer:: wrong number in path:"+pathFragments[7]);
+	    			}
+	    			data = data < 1 ? 20 : data > 100 ? 100 : data;
+	    			
+	    			System.out.println("data: "+data);
+    				for(String dd:pathFragments[6].split(";"))
+    					System.out.println("metric:" +dd);
 	    			
 	    			
-//	    			for(int i = 1; i <= data; ++i)
-//	    			{
-//		    			Integer metricID = i;//Integer.parseInt(pathFragments[6]);
-//		    			obj.put("resource", "measurement");
-//	        			list = new JSONArray();
-//	        			for (DataBase.Measurement measurement : dataBase.getMeasurements(metricID))
-//	        			{
-//	        				tmpObj = new JSONObject();
-//	        				tmpObj.put("id", measurement.id);
-//	        				tmpObj.put("hostID", measurement.metricID);
-//	        				tmpObj.put("time", measurement.time);
-//	        				tmpObj.put("value", measurement.value);
-//	        				list.add(tmpObj);
-//	        			}
-//	        			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+metric.metricName+"/data/"+list);
-//	    			}
+	    			list = new JSONArray();
+	    			for(String tmpMetricName: pathFragments[6].split(";"))
+	    			{
+	    				metric = dataBase.getMetric(sensor.id, tmpMetricName);
+	    				tmpObj = new JSONObject(); tmpObj.put("name", metric.metricName);
+	    				list.add(tmpObj);
+	    				tmpObj = new JSONObject(); tmpObj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+metric.metricName);
+	    				list.add(tmpObj);
+		    			JSONArray innerList = new JSONArray();
+		    			for (DataBase.Metric tmpMetric : dataBase.getMetricData(sensor.id, metric.metricName, data)){
+		    				tmpObj = new JSONObject();
+		    				tmpObj.put(tmpMetric.time, tmpMetric.value);
+		    				innerList.add(tmpObj);
+		    			}
+		    			tmpObj = new JSONObject(); tmpObj.put("data", innerList);
+		    			list.add(tmpObj);
+	    			}
+	    			obj.put("metrics", list);
 
 	    			break;
 	    	}

@@ -279,15 +279,15 @@ public class DataBase {
         	Statement stat = conn.createStatement();
             //ResultSet result = stat.executeQuery("SELECT * FROM metric m where m.id in (select metricid from measurement "
             //		+ "where sensorID="+sensorID+")");
-        	ResultSet result = stat.executeQuery("SELECT * FROM metric where sensorid="+sensorID);
+        	ResultSet result = stat.executeQuery("SELECT DISTINCT metricname FROM metric where sensorid="+sensorID);
             int id;
             String metricName, time, value;
             while(result.next()) {
-                id = result.getInt("id");
+                //id = result.getInt("id");
                 metricName = result.getString("metricname");
-                time = result.getString("time");
-                value = result.getString("value");
-                metrics.add(new Metric(id, sensorID, metricName, time, value));
+                //time = result.getString("time");
+                //value = result.getString("value");
+                metrics.add(new Metric(0, sensorID, metricName, "test", "test"));
             }
             stat.close();
         } catch (SQLException e) {
@@ -319,6 +319,30 @@ public class DataBase {
             return null;
         }
     	return metric;
+    }
+    
+    /**
+     * Get data of specific metric
+     * @param sensorID
+     * @param metricName
+     * @param amount
+     * @return metrics list
+     */
+    public List<Metric> getMetricData(int sensorID, String metricName, int amount){
+    	List<Metric> metrics = new LinkedList<Metric>();
+    	try {
+        	Statement stat = conn.createStatement();
+        	ResultSet result = stat.executeQuery("SELECT * FROM metric where metricname='"+metricName+"' and sensorid="+sensorID
+        			+ " order by time desc limit "+amount);
+        	while(result.next()){
+         		metrics.add (new Metric(result.getInt("id"), sensorID, metricName, result.getString("time"), result.getString("value")));
+        	}
+            stat.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    	return metrics;
     }
     
 //    /**
