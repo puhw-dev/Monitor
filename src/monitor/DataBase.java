@@ -7,8 +7,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 
-import org.sqlite.JDBC;
+import sun.management.Sensor;
 
 /**
  * Class to handle SQLite data base.
@@ -343,6 +344,19 @@ public class DataBase {
             return null;
         }
     	return metrics;
+    }
+    
+    Random generator = new Random();
+    public void testDataInsertToMetric(){
+    	try {
+        	Statement stat = conn.createStatement();
+        	stat.executeQuery("INSERT INTO metric (sensorid,metricname,time,value) VALUES "
+        			+ "(1,'freeMemory','"+System.currentTimeMillis()+"'," + generator.nextInt(20)+")");
+ 
+            stat.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
     
 //    /**

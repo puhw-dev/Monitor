@@ -55,6 +55,10 @@ public class RestServer {
 	 */
     class MyHandler implements HttpHandler {
         public void handle(HttpExchange t) throws IOException {
+        	//test
+        	//dataBase.testDataInsertToMetric();
+        	///
+        	
         	System.out.println("RestServer:: Request method: " + t.getRequestMethod());
         	//System.out.println("RestServer:: Request headers: " + t.getRequestHeaders());
         	System.out.println("RestServer:: Request URI: " + t.getRequestURI());
@@ -62,6 +66,7 @@ public class RestServer {
         	// path parsing
         	URI uri = t.getRequestURI();
         	String [] pathFragments = uri.getPath().split("/");
+     
         	System.out.println(pathFragments.length);
         	try {
 	        	switch (pathFragments.length){
@@ -93,7 +98,7 @@ public class RestServer {
         	String reqMethod = t.getRequestMethod();
         	String response = null;
         	if (reqMethod.equals("GET"))
-        		response = readResource(t, pathFragments);
+        		response = readResource(t, pathFragments, uri.getQuery());
         	else if (reqMethod.equals("POST"))
         		response = createResource(t, pathFragments);
         	else if (reqMethod.equals("PUT"))
@@ -112,7 +117,7 @@ public class RestServer {
          * READ operation of CRUD in RESTful system. From HTTP GET method.
          * @param t 
          */
-        private String readResource(HttpExchange t, String [] pathFragments){  	
+        private String readResource(HttpExchange t, String [] pathFragments, String query){  	
         	
         	JSONObject obj = new JSONObject();
         	JSONObject tmpObj = null;
@@ -225,11 +230,11 @@ public class RestServer {
 
 	    			int data = 20;
 	    			try{
-	    				if (pathFragments[7].split("=").length == 2)
-	    					data = Integer.parseInt(pathFragments[7].split("=")[1]);
+	    				if (query.split("=").length == 2)
+	    					data = Integer.parseInt(query.split("=")[1]);
 	    			}
 	    			catch (NumberFormatException e){
-	    				System.err.println("RestServer:: wrong number in path:"+pathFragments[7]);
+	    				System.err.println("RestServer:: wrong number in query:"+query);
 	    			}
 	    			data = data < 1 ? 20 : data > 100 ? 100 : data;
 	    			
