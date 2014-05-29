@@ -29,11 +29,12 @@ public class RestServer {
 	/// private fields
 	private DataBase dataBase;
 	private HttpServer server;
-	/// public fields
-	public String monitorIP = null;
+	private String monitorName = null;
+	private String monitorIP = null;
+	
 	
 	/// constructor
-	public RestServer (DataBase database) throws IOException {
+	public RestServer (String monitorName, DataBase database) throws IOException {
 		System.out.println(InetAddress.getLocalHost());
 		server = HttpServer.create(new InetSocketAddress(InetAddress.getLocalHost(),34899), 0);
 	    server.createContext("/", new MyHandler());
@@ -41,8 +42,12 @@ public class RestServer {
 	    server.start();
 	    monitorIP = server.getAddress().getAddress().getHostAddress();
 	    this.dataBase = database;
+	    this.monitorName = monitorName;
 	    System.out.println("RestServer: server started");
 	}
+	
+	/// getters
+	public String getMonitorIP(){ return monitorIP; }
     
 	/// inner class
 	/**
@@ -51,7 +56,7 @@ public class RestServer {
     class MyHandler implements HttpHandler {
         public void handle(HttpExchange t) throws IOException {
         	System.out.println("RestServer:: Request method: " + t.getRequestMethod());
-        	System.out.println("RestServer:: Request headers: " + t.getRequestHeaders());
+        	//System.out.println("RestServer:: Request headers: " + t.getRequestHeaders());
         	System.out.println("RestServer:: Request URI: " + t.getRequestURI());
         	
         	// path parsing
@@ -121,7 +126,7 @@ public class RestServer {
         	switch (pathFragments.length){
         		case 2: // path: {monitorURI}/hosts	
         			// get hosts list
-        			obj.put("name","monitor11");
+        			obj.put("name",monitorName);
                 	obj.put("href","http://"+monitorIP+"/hosts");
         			list = new JSONArray();
         			for (DataBase.Host tmpHost : dataBase.getHosts()){
@@ -149,10 +154,10 @@ public class RestServer {
         			obj.put("ip", host.ip);
         			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName);
         			list = new JSONArray();
-        			for (DataBase.Sensor tmpSensor : dataBase.getSensors(host.id)){
+        			for (DataBase.Sensor tmpSensor : dataBase.getSensors(host.hostName)){
         				tmpObj = new JSONObject();
         				tmpObj.put("sensorname", tmpSensor.sensorName);
-        				tmpObj.put("owner", tmpSensor.owner);
+        				tmpObj.put("owner", dataBase.getUser(tmpSensor.userID).login);
         				tmpObj.put("rpm", tmpSensor.rpm);
         				tmpObj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+tmpSensor.sensorName);
         				list.add(tmpObj);
@@ -164,9 +169,9 @@ public class RestServer {
 	    			hostName = pathFragments[2];
 	    			sensorName = pathFragments[4];
 	    			host = dataBase.getHost(hostName);
-	    			sensor = dataBase.getSensor(host.id, sensorName);
+	    			sensor = dataBase.getSensor(hostName, sensorName);
 	    			obj.put("sensorname", sensor.sensorName);
-	    			obj.put("owner", sensor.owner);
+	    			obj.put("owner", dataBase.getUser(sensor.userID).login);
 	    			obj.put("rpm", sensor.rpm);
 	    			obj.put("hostname", host.hostName); 
 	    			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName);
@@ -176,10 +181,10 @@ public class RestServer {
 	    			hostName = pathFragments[2];
 	    			sensorName= pathFragments[4];
 	    			host = dataBase.getHost(hostName);
-	    			sensor = dataBase.getSensor(host.id, sensorName);
+	    			sensor = dataBase.getSensor(host.hostName, sensorName);
 	    			obj.put("sensorname", sensor.sensorName);
 	    			obj.put("hostname", host.hostName);	    			
-	    			obj.put("owner", sensor.owner);
+	    			obj.put("owner", dataBase.getUser(sensor.userID).login);
     				obj.put("rpm", sensor.rpm);
 	    			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName);
         			list = new JSONArray();
@@ -197,12 +202,12 @@ public class RestServer {
 	    			sensorName = pathFragments[4];
 	    			metricName = pathFragments[6];
 	    			host = dataBase.getHost(hostName);
-	    			sensor = dataBase.getSensor(host.id, sensorName);
+	    			sensor = dataBase.getSensor(host.hostName, sensorName);
 	    		 	metric = dataBase.getMetric(sensor.id, metricName);
 	    		 	obj.put("hostname", host.hostName);
 	    			obj.put("sensorname", sensor.sensorName);
 	    			obj.put("metricname", metric.metricName);
-	    			obj.put("owner", sensor.owner);
+	    			obj.put("owner", dataBase.getUser(sensor.userID).login);
     				obj.put("rpm", sensor.rpm);
     				obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+metric.metricName);
 	    			break;
@@ -212,7 +217,7 @@ public class RestServer {
 	    			obj.put("hostname", host.hostName);
 	    			
 	    			sensorName = pathFragments[4];
-	    			sensor = dataBase.getSensor(host.id, sensorName);
+	    			sensor = dataBase.getSensor(host.hostName, sensorName);
 	    			obj.put("sensorname", sensor.sensorName);
 	    			
 	    			dataNumber = pathFragments[7];
@@ -232,22 +237,22 @@ public class RestServer {
 	    			}
 	    			
 	    			
-	    			for(int i = 1; i <= data; ++i)
-	    			{
-		    			Integer metricID = i;//Integer.parseInt(pathFragments[6]);
-		    			obj.put("resource", "measurement");
-	        			list = new JSONArray();
-	        			for (DataBase.Measurement measurement : dataBase.getMeasurements(metricID))
-	        			{
-	        				tmpObj = new JSONObject();
-	        				tmpObj.put("id", measurement.id);
-	        				tmpObj.put("hostID", measurement.metricID);
-	        				tmpObj.put("time", measurement.time);
-	        				tmpObj.put("value", measurement.value);
-	        				list.add(tmpObj);
-	        			}
-	        			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+metric.metricName+"/data/"+list);
-	    			}
+//	    			for(int i = 1; i <= data; ++i)
+//	    			{
+//		    			Integer metricID = i;//Integer.parseInt(pathFragments[6]);
+//		    			obj.put("resource", "measurement");
+//	        			list = new JSONArray();
+//	        			for (DataBase.Measurement measurement : dataBase.getMeasurements(metricID))
+//	        			{
+//	        				tmpObj = new JSONObject();
+//	        				tmpObj.put("id", measurement.id);
+//	        				tmpObj.put("hostID", measurement.metricID);
+//	        				tmpObj.put("time", measurement.time);
+//	        				tmpObj.put("value", measurement.value);
+//	        				list.add(tmpObj);
+//	        			}
+//	        			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+metric.metricName+"/data/"+list);
+//	    			}
 
 	    			break;
 	    	}

@@ -30,7 +30,7 @@ public class Monitor {
 	/// contructor
 	public Monitor() throws IOException{
 		dataBase = new DataBase();
-		restServer = new RestServer(dataBase);
+		restServer = new RestServer(monitorName, dataBase);
 		readParamteres("configure.properties");
 		//registerInCatalog();
 		//changeMonitorEntryInCatalog();
@@ -44,7 +44,7 @@ public class Monitor {
 	private void registerInCatalog(){	
 		try {
 			// Construct data
-			String data = "{\"name\":\""+monitorName+"\",\"ip\":\""+restServer.monitorIP+":8889\"}";
+			String data = "{\"name\":\""+monitorName+"\",\"ip\":\""+restServer.getMonitorIP()+":8889\"}";
 			String urlString = catalogURL+"/monitors";
 			URL url = new URL(urlString);
 			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -152,7 +152,7 @@ public class Monitor {
     			}
     			
     			if (!exists)
-    				dataBase.addUser(dataBase.new User (userData[0],userData[1])); 
+    				dataBase.addUser(dataBase.new User (0,userData[0],userData[1])); 
     	    }
     	} 
     	catch (IOException e)
