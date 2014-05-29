@@ -49,7 +49,7 @@ public class DataBase {
      * @return true if no error occurs.
      */
     private boolean createTables()  {
-    	String createUser = "CREATE TABLE IF NOT EXISTS userr ("
+    	String createUser = "CREATE TABLE IF NOT EXISTS users ("
     			+ "id integer NOT NULL, login text NOT NULL UNIQUE, password text UNIQUE, PRIMARY KEY (id) )";
 //        String createHost = "CREATE TABLE IF NOT EXISTS host ("
 //        		+ "id integer NOT NULL PRIMARY KEY AUTOINCREMENT, hostname text UNIQUE,	ip text)";
@@ -59,7 +59,7 @@ public class DataBase {
 //        		+ "FOREIGN KEY (owner) REFERENCES USER (login) )";
         String createSensor = "CREATE TABLE IF NOT EXISTS sensor (id integer NOT NULL, userid integer NOT NULL,"
         		+ "hostname text, hostip text, sensorname text, sensortype text, rpm integer,"
-        		+ "PRIMARY KEY (id), FOREIGN KEY (userid) REFERENCES USERR (id) )";
+        		+ "PRIMARY KEY (id), FOREIGN KEY (userid) REFERENCES USERs (id) )";
 //        String createMetric = "CREATE TABLE IF NOT EXISTS metric ("
 //        		+ "id integer NOT NULL PRIMARY KEY AUTOINCREMENT, name text)";     
 //        String createMeasurement = "CREATE TABLE IF NOT EXISTS measurement ("
@@ -92,7 +92,7 @@ public class DataBase {
     public void addUser(User user){
     	try {
         	Statement stat = conn.createStatement();
-        	stat.executeUpdate("INSERT INTO Userr (login,password) VALUES ('"+user.login+"','"+user.password+"')");
+        	stat.executeUpdate("INSERT INTO Users (login,password) VALUES ('"+user.login+"','"+user.password+"')");
             stat.close();
         } catch (SQLException e) {
         	System.err.println("add User err: " + e.getMessage());
@@ -109,7 +109,7 @@ public class DataBase {
     	List<User> users = new LinkedList<User>();
         try {
         	Statement stat = conn.createStatement();
-            ResultSet result = stat.executeQuery("SELECT * FROM userr");
+            ResultSet result = stat.executeQuery("SELECT * FROM users");
             int id;
             String login, password;
             while(result.next()) {
@@ -135,7 +135,7 @@ public class DataBase {
     	User user = null;
     	try {
         	Statement stat = conn.createStatement();
-            ResultSet result = stat.executeQuery("SELECT * FROM userr where id="+userID);
+            ResultSet result = stat.executeQuery("SELECT * FROM users where id="+userID);
             String login, password;
             if(result.next()) {
                 user = new User(userID, login = result.getString("login"), password = result.getString("password"));            
