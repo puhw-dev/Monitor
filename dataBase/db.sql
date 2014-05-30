@@ -12,25 +12,24 @@ DROP TABLE USERS;
 
 CREATE TABLE USERS
 (
-	id integer NOT NULL,
 	login text NOT NULL UNIQUE,
-	password text UNIQUE,
-	PRIMARY KEY (id)
+	password text,
+	PRIMARY KEY (login)
 );
 
 
 CREATE TABLE SENSOR
 (
 	id integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-	userid integer NOT NULL,
+	login text NOT NULL,
 	hostname text,
 	hostip text,
 	sensorname text,
 	sensortype text,
 	rpm integer,
 	PRIMARY KEY (id),
-	FOREIGN KEY (userid)
-	REFERENCES USERS (id)
+	FOREIGN KEY (login)
+	REFERENCES USERS (login)
 );
 
 

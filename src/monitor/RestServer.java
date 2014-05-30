@@ -162,7 +162,7 @@ public class RestServer {
         			for (DataBase.Sensor tmpSensor : dataBase.getSensors(host.hostName)){
         				tmpObj = new JSONObject();
         				tmpObj.put("sensorname", tmpSensor.sensorName);
-        				tmpObj.put("owner", dataBase.getUser(tmpSensor.login));
+        				tmpObj.put("owner", tmpSensor.login);
         				tmpObj.put("rpm", tmpSensor.rpm);
         				tmpObj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+tmpSensor.sensorName);
         				list.add(tmpObj);
@@ -176,7 +176,7 @@ public class RestServer {
 	    			host = dataBase.getHost(hostName);
 	    			sensor = dataBase.getSensor(hostName, sensorName);
 	    			obj.put("sensorname", sensor.sensorName);
-	    			obj.put("owner", dataBase.getUser(sensor.login));
+	    			obj.put("owner", sensor.login);
 	    			obj.put("rpm", sensor.rpm);
 	    			obj.put("hostname", host.hostName); 
 	    			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName);
@@ -189,7 +189,7 @@ public class RestServer {
 	    			sensor = dataBase.getSensor(host.hostName, sensorName);
 	    			obj.put("sensorname", sensor.sensorName);
 	    			obj.put("hostname", host.hostName);	    			
-	    			obj.put("owner", dataBase.getUser(sensor.login));
+	    			obj.put("owner", sensor.login);
     				obj.put("rpm", sensor.rpm);
 	    			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName);
         			list = new JSONArray();
@@ -212,7 +212,7 @@ public class RestServer {
 	    		 	obj.put("hostname", host.hostName);
 	    			obj.put("sensorname", sensor.sensorName);
 	    			obj.put("metricname", metric.metricName);
-	    			obj.put("owner", dataBase.getUser(sensor.login));
+	    			obj.put("owner", sensor.login);
     				obj.put("rpm", sensor.rpm);
     				obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+metric.metricName);
 	    			break;
@@ -224,7 +224,7 @@ public class RestServer {
 	    			sensorName = pathFragments[4];
 	    			sensor = dataBase.getSensor(host.hostName, sensorName);
 	    			obj.put("sensorname", sensor.sensorName);
-	    			obj.put("owner", dataBase.getUser(sensor.login));
+	    			obj.put("owner", sensor.login);
 	    			obj.put("rpm", sensor.rpm);
 	    			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics");
 
