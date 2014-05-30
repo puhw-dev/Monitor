@@ -152,7 +152,7 @@ public class Monitor {
     			}
     			
     			if (!exists)
-    				dataBase.addUser(dataBase.new User (0,userData[0],userData[1])); 
+    				dataBase.addUser(dataBase.new User (userData[0],userData[1])); 
     	    }
     	} 
     	catch (IOException e)

@@ -51,16 +51,16 @@ public class DataBase {
      */
     private boolean createTables()  {
     	String createUser = "CREATE TABLE IF NOT EXISTS users ("
-    			+ "id integer NOT NULL, login text NOT NULL UNIQUE, password text UNIQUE, PRIMARY KEY (id) )";
+    			+ "login text NOT NULL UNIQUE, password text, PRIMARY KEY (login) )";
 //        String createHost = "CREATE TABLE IF NOT EXISTS host ("
 //        		+ "id integer NOT NULL PRIMARY KEY AUTOINCREMENT, hostname text UNIQUE,	ip text)";
 //        String createSensor = "CREATE TABLE IF NOT EXISTS sensor ("
 //        		+ "id integer NOT NULL PRIMARY KEY AUTOINCREMENT, hostid integer NOT NULL, owner text NOT NULL UNIQUE,"
 //        		+ "sensorname text,	sensortype text, rpm integer, FOREIGN KEY (hostid) REFERENCES HOST (id),"
 //        		+ "FOREIGN KEY (owner) REFERENCES USER (login) )";
-        String createSensor = "CREATE TABLE IF NOT EXISTS sensor (id integer NOT NULL, userid integer NOT NULL,"
+        String createSensor = "CREATE TABLE IF NOT EXISTS sensor (id integer NOT NULL, login text NOT NULL,"
         		+ "hostname text, hostip text, sensorname text, sensortype text, rpm integer,"
-        		+ "PRIMARY KEY (id), FOREIGN KEY (userid) REFERENCES USERs (id) )";
+        		+ "PRIMARY KEY (id), FOREIGN KEY (login) REFERENCES USERs (id) )";
 //        String createMetric = "CREATE TABLE IF NOT EXISTS metric ("
 //        		+ "id integer NOT NULL PRIMARY KEY AUTOINCREMENT, name text)";     
 //        String createMeasurement = "CREATE TABLE IF NOT EXISTS measurement ("
@@ -114,10 +114,10 @@ public class DataBase {
             int id;
             String login, password;
             while(result.next()) {
-            	id = result.getInt("id");
+            	//id = result.getInt("id");
                 login = result.getString("login");
                 password = result.getString("password");            
-                users.add(new User(id, login, password));
+                users.add(new User(login, password));
             }
             stat.close();
         } catch (SQLException e) {
@@ -132,14 +132,14 @@ public class DataBase {
      * @param userID user id
      * @return User
      */
-    public User getUser(int userID){
+    public User getUser(String login){
     	User user = null;
     	try {
         	Statement stat = conn.createStatement();
-            ResultSet result = stat.executeQuery("SELECT * FROM users where id="+userID);
-            String login, password;
+            ResultSet result = stat.executeQuery("SELECT * FROM users where login='"+login+"'");
+            String password;
             if(result.next()) {
-                user = new User(userID, login = result.getString("login"), password = result.getString("password"));            
+                user = new User(login = result.getString("login"), password = result.getString("password"));            
             }
             stat.close();
         } catch (SQLException e) {
@@ -224,17 +224,17 @@ public class DataBase {
         try {
         	Statement stat = conn.createStatement();
             ResultSet result = stat.executeQuery("SELECT * FROM sensor where hostname='"+hostName+"'");
-            int id, userID;
-            String owner, hostIP, sensorName, sensorType;
+            int id;
+            String login, hostIP, sensorName, sensorType;
             int rpm; 
             while(result.next()) {
                 id = result.getInt("id");
-                userID = result.getInt("userid");
+                login = result.getString("login");
                 hostIP = result.getString("hostip");
                 sensorName = result.getString("sensorname");
                 sensorType = result.getString("sensortype");
                 rpm = result.getInt("rpm");
-                sensors.add(new Sensor(id, userID, hostName, hostIP, sensorName, sensorType, rpm));
+                sensors.add(new Sensor(id, login, hostName, hostIP, sensorName, sensorType, rpm));
             }
             stat.close();
         } catch (SQLException e) {
@@ -257,7 +257,7 @@ public class DataBase {
         	ResultSet result = stat.executeQuery("SELECT * FROM sensor WHERE sensorname='"+sensorName+"'"
         			+" AND hostname='"+hostName+"'");
         	if(result.next()){
-         		sensor = new Sensor(result.getInt("id"), result.getInt("userid"), result.getString("hostName"),
+         		sensor = new Sensor(result.getInt("id"), result.getString("login"), result.getString("hostName"),
          				result.getString("hostip"), result.getString("sensorName"), result.getString("sensorType"),
          				result.getInt("rpm"));
         	}
@@ -391,11 +391,9 @@ public class DataBase {
      * User class represent User table in data base
      */
     class User {
-    	int id;
     	public String login;
     	public String password;
-		public User(int id, String login, String password) {
-			this.id = id;
+		public User(String login, String password) {
 			this.login = login;
 			this.password = password;
 		}
@@ -418,15 +416,15 @@ public class DataBase {
      */
     class Sensor {
     	public int id;
-    	public int userID;
+    	public String login;
     	public String hostName;
     	public String hostIP;
     	public String sensorName;
     	public String sensorType;
     	public int rpm;
-		public Sensor(int id, int userID, String hostName, String hostIP, String sensorName, String sensorType, int rpm) {
+		public Sensor(int id, String login, String hostName, String hostIP, String sensorName, String sensorType, int rpm) {
 			this.id = id;
-			this.userID = userID;
+			this.login = login;
 			this.hostName = hostName;
 			this.hostIP = hostIP;
 			this.sensorName = sensorName;
