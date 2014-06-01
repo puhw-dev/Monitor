@@ -32,7 +32,7 @@ public class Monitor {
 		dataBase = new DataBase();
 		restServer = new RestServer(monitorName, dataBase);
 		readParamteres("configure.properties");
-		//registerInCatalog();
+		registerInCatalog();
 		//changeMonitorEntryInCatalog();
 		//deleteMonitorEntryInCatalog();
 	}

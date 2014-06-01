@@ -1,0 +1,23 @@
+---- INSTRUCTION TO COMPILE AND RUN Monitor on fatcat ----
+
+The files tree should looks like:
+
+./ # <- project home directory
+ | monitor/
+ |        | RestServer.java
+ |        | Monitor.java
+ |        | DataBase.java
+ | sqlite-jdbc-3.7.2.jar
+ | monitor.db # <- if not provide, will be generate but only with USERS data read form propreties file
+ | json-simple-1.1.1.jar
+ | configure.properties
+ 
+ --- COMPILATION ---
+ In project home directory
+ $ javac -cp "json-simple-1.1.1.jar:sqlite-jdbc-3.7.2.jar" monitor/Monitor.java monitor/RestServer.java monitor/DataBase.java
+ 
+ --- RUN ---
+ Make sure to kill previous running process, because it's block host port.
+ In project home directory.
+ $ java -classpath ".:sqlite-jdbc-3.7.2.jar:json-simple-1.1.1.jar" monitor.Monitor
+ 
