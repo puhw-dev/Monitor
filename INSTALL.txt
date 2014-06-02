@@ -8,6 +8,7 @@ The files tree should looks like:
  |        | Monitor.java
  |        | DataBase.java
  | sqlite-jdbc-3.7.2.jar
+ | makefile
  | monitor.db # <- if not provide, will be generate but only with USERS data read form propreties file
  | json-simple-1.1.1.jar
  | configure.properties
@@ -31,7 +32,6 @@ The files tree should looks like:
  Monitors gonna run on the same machine. Another thing is that Monitor will register in Catalog with
  host_ip on which will be run (e.g fatcat ip, so proper substitution should be done in Catalogs
  database in order to get globally accessible ip where forwarding to fatcat is set). 
- 
  
  --- MAKEFILE ---
  Then you can use makefile:

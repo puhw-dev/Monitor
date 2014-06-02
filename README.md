@@ -1,4 +1,4 @@
-<h1>monitor</h1>
-Monitor
-<hr>
-Passive Uninterrupted Host Watcher - monitor
+Passive Uninterrupted Host Watcher - Monitor
+
+--- BUILDING ---
+Instruction in file INSTALL.txt
