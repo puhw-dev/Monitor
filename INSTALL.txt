@@ -11,7 +11,34 @@ The files tree should looks like:
  | monitor.db # <- if not provide, will be generate but only with USERS data read form propreties file
  | json-simple-1.1.1.jar
  | configure.properties
+ -------------------------------------
+ And for UDP part of monitor we've got also
+ | config_UDP/
+ |           | client_config.json
+ |           | server_config.json
+ | src_UDP/
+          | client.py
+          | crypt.py
+          | custom_exc.py
+          | dbman.py
+          | handler.py
+          | logger.py
+          | server.py
+          | utilities.py
  
+ Before go further remember to change Monitors name in properties file (line 1).
+ You should also change port number (RestServer.java -> constructor -> line ~  39) if more than one
+ Monitors gonna run on the same machine. Another thing is that Monitor will register in Catalog with
+ host_ip on which will be run (e.g fatcat ip, so proper substitution should be done in Catalogs
+ database in order to get globally accessible ip where forwarding to fatcat is set). 
+ 
+ 
+ --- MAKEFILE ---
+ Then you can use makefile:
+ rule default - to build project
+ rule run - to run
+ 
+ Or do it yourself as described below:
  --- COMPILATION ---
  In project home directory
  $ javac -cp "json-simple-1.1.1.jar:sqlite-jdbc-3.7.2.jar" monitor/Monitor.java monitor/RestServer.java monitor/DataBase.java
