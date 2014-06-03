@@ -14,10 +14,10 @@ The files tree should looks like:
  | configure.properties
  -------------------------------------
  And for UDP part of monitor we've got also
- | config_UDP/
+ | config/
  |           | client_config.json
  |           | server_config.json
- | src_UDP/
+ | src/
           | client.py
           | crypt.py
           | custom_exc.py
@@ -35,8 +35,8 @@ The files tree should looks like:
  
  --- MAKEFILE ---
  Then you can use makefile:
- rule default - to build project
- rule run - to run
+ target default - to build project
+ target run     - to run
  
  Or do it yourself as described below:
  --- COMPILATION ---
