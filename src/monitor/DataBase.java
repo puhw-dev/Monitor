@@ -7,6 +7,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
+
+import sun.management.Sensor;
 
 /**
  * Class to handle SQLite data base.
@@ -47,23 +50,32 @@ public class DataBase {
      * @return true if no error occurs.
      */
     private boolean createTables()  {
-    	String createUser = "CREATE TABLE IF NOT EXISTS user"
-    			+ "(id INTEGER PRIMARY KEY AUTOINCREMENT, login TEXT, password TEXT)";
-        String createHost = "CREATE TABLE IF NOT EXISTS host"
-        		+ "(id INTEGER PRIMARY KEY AUTOINCREMENT, hostname TEXT, ip TEXT)";
-        String createSensor = "CREATE TABLE IF NOT EXISTS sensor"
-        		+ "(id INTEGER PRIMARY KEY AUTOINCREMENT, sensorname TEXT, hostid  INTEGER)";
-        String createMetric = "CREATE TABLE IF NOT EXISTS metric"
-        		+ "(id INTEGER PRIMARY KEY AUTOINCREMENT, sensorID  INTEGER, name TEXT)";
-        String createMeasurement = "CREATE TABLE IF NOT EXISTS measurement"
-        		+ "(id INTEGER PRIMARY KEY AUTOINCREMENT, metricID INTEGER, time TEXT, value REAL)";
+    	String createUser = "CREATE TABLE IF NOT EXISTS users ("
+    			+ "login text NOT NULL UNIQUE, password text, PRIMARY KEY (login) )";
+//        String createHost = "CREATE TABLE IF NOT EXISTS host ("
+//        		+ "id integer NOT NULL PRIMARY KEY AUTOINCREMENT, hostname text UNIQUE,	ip text)";
+//        String createSensor = "CREATE TABLE IF NOT EXISTS sensor ("
+//        		+ "id integer NOT NULL PRIMARY KEY AUTOINCREMENT, hostid integer NOT NULL, owner text NOT NULL UNIQUE,"
+//        		+ "sensorname text,	sensortype text, rpm integer, FOREIGN KEY (hostid) REFERENCES HOST (id),"
+//        		+ "FOREIGN KEY (owner) REFERENCES USER (login) )";
+        String createSensor = "CREATE TABLE IF NOT EXISTS sensor (id integer NOT NULL, login text NOT NULL,"
+        		+ "hostname text, hostip text, sensorname text, sensortype text, rpm integer,"
+        		+ "PRIMARY KEY (id), FOREIGN KEY (login) REFERENCES USERs (id) )";
+//        String createMetric = "CREATE TABLE IF NOT EXISTS metric ("
+//        		+ "id integer NOT NULL PRIMARY KEY AUTOINCREMENT, name text)";     
+//        String createMeasurement = "CREATE TABLE IF NOT EXISTS measurement ("
+//        		+ "id integer NOT NULL PRIMARY KEY AUTOINCREMENT, metricid integer NOT NULL, sensorid integer NOT NULL,"
+//        		+ "time text, value text, FOREIGN KEY (metricid) REFERENCES METRIC (id),"
+//        		+ "FOREIGN KEY (sensorid)	REFERENCES SENSOR (id) )";
+        String createMetric = "CREATE TABLE IF NOT EXISTS metric (id integer NOT NULL, sensorid integer NOT NULL,"
+        		+ "metricname text, time text, value text, PRIMARY KEY (id), FOREIGN KEY (sensorid)	REFERENCES SENSOR (id) )";
         try {
             Statement stat = conn.createStatement();
             stat.execute(createUser);
-            stat.execute(createHost);
+            //stat.execute(createHost);
             stat.execute(createSensor);
             stat.execute(createMetric);
-            stat.execute(createMeasurement);
+            //stat.execute(createMeasurement);
         } catch (SQLException e) {
             System.err.println("Error in creating tables");
             e.printStackTrace();
@@ -75,6 +87,69 @@ public class DataBase {
     
     /// public api
     /**
+     * Add new user
+     * @param user to add
+     */
+    public void addUser(User user){
+    	try {
+        	Statement stat = conn.createStatement();
+        	stat.executeUpdate("INSERT INTO Users (login,password) VALUES ('"+user.login+"','"+user.password+"')");
+            stat.close();
+        } catch (SQLException e) {
+        	System.err.println("add User err: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+   
+    /**
+     * Get list of available users.
+     * @return users list.
+     */
+    public List<User> getUsers(){
+    	List<User> users = new LinkedList<User>();
+        try {
+        	Statement stat = conn.createStatement();
+            ResultSet result = stat.executeQuery("SELECT * FROM users");
+            int id;
+            String login, password;
+            while(result.next()) {
+            	//id = result.getInt("id");
+                login = result.getString("login");
+                password = result.getString("password");            
+                users.add(new User(login, password));
+            }
+            stat.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }     
+        return users;
+    }
+    
+    /**
+     * Get specific user by id
+     * @param userID user id
+     * @return User
+     */
+    public User getUser(String login){
+    	User user = null;
+    	try {
+        	Statement stat = conn.createStatement();
+            ResultSet result = stat.executeQuery("SELECT * FROM users where login='"+login+"'");
+            String password;
+            if(result.next()) {
+                user = new User(login = result.getString("login"), password = result.getString("password"));            
+            }
+            stat.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }     
+        return user;
+    }
+    
+    /**
      * Get list of available hosts.
      * @return hosts list.
      */
@@ -82,14 +157,12 @@ public class DataBase {
     	List<Host> hosts = new LinkedList<Host>();
         try {
         	Statement stat = conn.createStatement();
-            ResultSet result = stat.executeQuery("SELECT * FROM host");
-            int id;
+            ResultSet result = stat.executeQuery("SELECT DISTINCT hostname, hostip FROM sensor");
             String hostName, ip;
             while(result.next()) {
-                id = result.getInt("id");
                 hostName = result.getString("hostname");
-                ip = result.getString("ip");            
-                hosts.add(new Host(id, hostName, ip));
+                ip = result.getString("hostip");            
+                hosts.add(new Host(hostName, ip));
             }
             stat.close();
         } catch (SQLException e) {
@@ -104,21 +177,21 @@ public class DataBase {
      * @param hostId host id
      * @return requested host or null if there are no host with such id in db.
      */
-    public Host getHost(int hostID){
-    	Host host = null;
-    	try {
-        	Statement stat = conn.createStatement();
-        	ResultSet result = stat.executeQuery("SELECT * FROM host where id="+hostID);
-        	if(result.next()){
-        		host = new Host(result.getInt("id"), result.getString("hostname"), result.getString("ip"));
-        	}
-            stat.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
-    	return host;
-    }
+//    public Host getHost(int hostID){
+//    	Host host = null;
+//    	try {
+//        	Statement stat = conn.createStatement();
+//        	ResultSet result = stat.executeQuery("SELECT * FROM host where id="+hostID);
+//        	if(result.next()){
+//        		host = new Host(result.getInt("id"), result.getString("hostname"), result.getString("ip"));
+//        	}
+//            stat.close();
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//            return null;
+//        }
+//    	return host;
+//    }
     
     /**
      * Get specific host by name
@@ -129,9 +202,9 @@ public class DataBase {
     	Host host = null;
     	try {
         	Statement stat = conn.createStatement();
-        	ResultSet result = stat.executeQuery("SELECT * FROM host where hostname="+hostName);
+        	ResultSet result = stat.executeQuery("SELECT * FROM sensor where hostname='"+hostName+"'");
         	if(result.next()){
-        		host = new Host(result.getInt("id"), result.getString("hostname"), result.getString("ip"));
+        		host = new Host(result.getString("hostname"), result.getString("hostip"));
         	}
             stat.close();
         } catch (SQLException e) {
@@ -142,21 +215,26 @@ public class DataBase {
     }
     
     /**
-     * Get metrics list of specific host
-     * @param hostID host id
+     * Get sensors list of specific host
+     * @param hostName host name
      * @return sensor list
      */
-    public List<Sensor> getSensors(int hostID){
+    public List<Sensor> getSensors(String hostName){
     	List<Sensor> sensors = new LinkedList<Sensor>();
         try {
         	Statement stat = conn.createStatement();
-            ResultSet result = stat.executeQuery("SELECT * FROM sensor where hostID="+hostID);
+            ResultSet result = stat.executeQuery("SELECT * FROM sensor where hostname='"+hostName+"'");
             int id;
-            String sensorName;
+            String login, hostIP, sensorName, sensorType;
+            int rpm; 
             while(result.next()) {
                 id = result.getInt("id");
+                login = result.getString("login");
+                hostIP = result.getString("hostip");
                 sensorName = result.getString("sensorname");
-                sensors.add(new Sensor(id, sensorName, hostID));
+                sensorType = result.getString("sensortype");
+                rpm = result.getInt("rpm");
+                sensors.add(new Sensor(id, login, hostName, hostIP, sensorName, sensorType, rpm));
             }
             stat.close();
         } catch (SQLException e) {
@@ -168,18 +246,20 @@ public class DataBase {
     
     /**
      * Get specific sensor of specific host, by hostID and sensorName
-     * @param hostID
+     * @param hostName
      * @param sensorName
      * @return sensor
      */
-    public Sensor getSensor(int hostID, String sensorName){
+    public Sensor getSensor(String hostName, String sensorName){
     	Sensor sensor = null;
     	try {
         	Statement stat = conn.createStatement();
-        	ResultSet result = stat.executeQuery("SELECT * FROM sensor WHERE sensorname="+sensorName
-        			+" AND hostID="+hostID);
+        	ResultSet result = stat.executeQuery("SELECT * FROM sensor WHERE sensorname='"+sensorName+"'"
+        			+" AND hostname='"+hostName+"'");
         	if(result.next()){
-         		sensor = new Sensor(result.getInt("id"), result.getString("sensorName"), result.getInt("hostid"));
+         		sensor = new Sensor(result.getInt("id"), result.getString("login"), result.getString("hostName"),
+         				result.getString("hostip"), result.getString("sensorName"), result.getString("sensorType"),
+         				result.getInt("rpm"));
         	}
             stat.close();
         } catch (SQLException e) {
@@ -198,13 +278,17 @@ public class DataBase {
     	List<Metric> metrics = new LinkedList<Metric>();
         try {
         	Statement stat = conn.createStatement();
-            ResultSet result = stat.executeQuery("SELECT * FROM metric where sensorID="+sensorID);
+            //ResultSet result = stat.executeQuery("SELECT * FROM metric m where m.id in (select metricid from measurement "
+            //		+ "where sensorID="+sensorID+")");
+        	ResultSet result = stat.executeQuery("SELECT DISTINCT metricname FROM metric where sensorid="+sensorID);
             int id;
-            String name;
+            String metricName, time, value;
             while(result.next()) {
-                id = result.getInt("id");
-                name = result.getString("name");
-                metrics.add(new Metric(id, sensorID, name));
+                //id = result.getInt("id");
+                metricName = result.getString("metricname");
+                //time = result.getString("time");
+                //value = result.getString("value");
+                metrics.add(new Metric(0, sensorID, metricName, "test", "test"));
             }
             stat.close();
         } catch (SQLException e) {
@@ -224,10 +308,11 @@ public class DataBase {
     	Metric metric = null;
     	try {
         	Statement stat = conn.createStatement();
-        	ResultSet result = stat.executeQuery("SELECT * FROM metric WHERE metricname="+metricName
-        			+" AND sensorID="+sensorID);
+//        	ResultSet result = stat.executeQuery("SELECT * FROM metric m where m.name='"+metricName+"' and m.id in (select metricid from measurement "
+//            		+ "where sensorID="+sensorID+")");
+        	ResultSet result = stat.executeQuery("SELECT * FROM metric where metricname='"+metricName+"' and sensorid="+sensorID);
         	if(result.next()){
-         		metric = new Metric(result.getInt("id"), result.getInt("sensorid"), result.getString("name"));
+         		metric = new Metric(result.getInt("id"), sensorID, metricName, result.getString("time"), result.getString("value"));
         	}
             stat.close();
         } catch (SQLException e) {
@@ -238,42 +323,89 @@ public class DataBase {
     }
     
     /**
-     * Get measurements list of specific metric
-     * @param metricID metric id
-     * @return measurements list
+     * Get data of specific metric
+     * @param sensorID
+     * @param metricName
+     * @param amount
+     * @return metrics list
      */
-    public List<Measurement> getMeasurements(int metricID){
-    	List<Measurement> measurements = new LinkedList<Measurement>();
-        try {
+    public List<Metric> getMetricData(int sensorID, String metricName, int amount){
+    	List<Metric> metrics = new LinkedList<Metric>();
+    	try {
         	Statement stat = conn.createStatement();
-            ResultSet result = stat.executeQuery("SELECT * FROM measurement where metricID="+metricID);
-            int id;
-            String time;
-            double value;
-            while(result.next()) {
-                id = result.getInt("id");
-                time = result.getString("time");
-                value = result.getDouble("value");
-                measurements.add(new Measurement(id, metricID, time, value));
-            }
+        	ResultSet result = stat.executeQuery("SELECT * FROM metric where metricname='"+metricName+"' and sensorid="+sensorID
+        			+ " order by time desc limit "+amount);
+        	while(result.next()){
+         		metrics.add (new Metric(result.getInt("id"), sensorID, metricName, result.getString("time"), result.getString("value")));
+        	}
             stat.close();
         } catch (SQLException e) {
             e.printStackTrace();
             return null;
-        }      
-        return measurements;
+        }
+    	return metrics;
     }
     
+    Random generator = new Random();
+    public void testDataInsertToMetric(){
+    	try {
+        	Statement stat = conn.createStatement();
+        	stat.executeQuery("INSERT INTO metric (sensorid,metricname,time,value) VALUES "
+        			+ "(1,'freeMemory','"+System.currentTimeMillis()+"'," + generator.nextInt(20)+")");
+ 
+            stat.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    
+//    /**
+//     * Get measurements list of specific metric
+//     * @param metricID metric id
+//     * @return measurements list
+//     */
+//    public List<Measurement> getMeasurements(int metricID){
+//    	List<Measurement> measurements = new LinkedList<Measurement>();
+//        try {
+//        	Statement stat = conn.createStatement();
+//            ResultSet result = stat.executeQuery("SELECT * FROM measurement where metricID="+metricID);
+//            int id;
+//            String time;
+//            double value;
+//            while(result.next()) {
+//                id = result.getInt("id");
+//                time = result.getString("time");
+//                value = result.getDouble("value");
+//                measurements.add(new Measurement(id, metricID, time, value));
+//            }
+//            stat.close();
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//            return null;
+//        }      
+//        return measurements;
+//    }
+    
     /// inner classes
+    /**
+     * User class represent User table in data base
+     */
+    class User {
+    	public String login;
+    	public String password;
+		public User(String login, String password) {
+			this.login = login;
+			this.password = password;
+		}
+    }
+    
     /**
      * Host class represent Host table in data base.
      */
     class Host {
-    	public int id;
     	public String ip;
     	public String hostName;
-    	Host(int id, String hostName, String ip){
-    		this.id = id;
+    	Host(String hostName, String ip){
     		this.ip = ip;
     		this.hostName = hostName;
     	}
@@ -284,43 +416,66 @@ public class DataBase {
      */
     class Sensor {
     	public int id;
+    	public String login;
+    	public String hostName;
+    	public String hostIP;
     	public String sensorName;
-    	public int hostID;
-    	
-    	Sensor(int id, String sensorName, int hostID){
-    		this.id = id; 		
-    		this.sensorName = sensorName;
-    		this.hostID = hostID;
-    	}
+    	public String sensorType;
+    	public int rpm;
+		public Sensor(int id, String login, String hostName, String hostIP, String sensorName, String sensorType, int rpm) {
+			this.id = id;
+			this.login = login;
+			this.hostName = hostName;
+			this.hostIP = hostIP;
+			this.sensorName = sensorName;
+			this.sensorType = sensorType;
+			this.rpm = rpm;
+		}
     }
     
-    /**
-     * Metric class represent Metric table in data base.
-     */
-    class Metric {
-    	public int id;
-    	public int sensorID;
-    	public String name;
-    	Metric(int id, int sensorID, String name){
-    		this.id = id;
-    		this.sensorID = sensorID;
-    		this.name = name;
-    	}
-    }
-    
-    /**
-     * Measurement class represent Measurement table in data base.
-     */
-    class Measurement {
-    	public int id;
-    	public int metricID;
-    	public String time;
-    	public double value;
-    	Measurement(int id, int metricID, String time, double value){
-    		this.id = id;
-    		this.metricID = metricID;
-    		this.time = time;
-    		this.value = value;
-    	}
-    }
+  /**
+  * Metric class represent Metric table in data base.
+  */
+ class Metric {
+ 	public int id;
+ 	public int sensorID;
+ 	public String metricName;
+ 	public String time;
+ 	public String value;
+	public Metric(int id, int sensorID, String metricName, String time, String value) {
+		this.id = id;
+		this.sensorID = sensorID;
+		this.metricName = metricName;
+		this.time = time;
+		this.value = value;
+	}	
+ }
+        
+//    /**
+//     * Metric class represent Metric table in data base.
+//     */
+//    class Metric {
+//    	public int id;
+//    	public String metricName;
+//    	Metric(int id, String metricName){
+//    		this.id = id;
+//    		this.metricName = metricName;
+//    	}
+//    }
+//    
+//    /**
+//     * Measurement class represent Measurement table in data base.
+//     */
+//    class Measurement {
+//    	public int id;
+//    	public int metricID;
+//    	public String time;
+//    	public double value;
+//    	Measurement(int id, int metricID, String time, double value){
+//    		this.id = id;
+//    		this.metricID = metricID;
+//    		this.time = time;
+//    		this.value = value;
+//    	}
+//    }
 }

@@ -1,11 +1,18 @@
 package monitor;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Scanner;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -19,20 +26,28 @@ import org.json.simple.JSONObject;
  */
 public class RestServer {
 	
+	/// private fields
 	private DataBase dataBase;
-	public HttpServer server;
+	private HttpServer server;
+	private String monitorName = null;
+	private String monitorIP = null;
+	
 	
 	/// constructor
-	public RestServer () throws IOException {
-		//System.out.println(InetAddress.getLocalHost());
-		server = HttpServer.create(new InetSocketAddress(InetAddress.getLocalHost(),8000), 0);
+	public RestServer (String monitorName, DataBase database) throws IOException {
+		System.out.println(InetAddress.getLocalHost());
+		server = HttpServer.create(new InetSocketAddress(InetAddress.getLocalHost(),34899), 0);
 	    server.createContext("/", new MyHandler());
 	    server.setExecutor(null); // creates a default executor
 	    server.start();
-	    
-	    dataBase = new DataBase();
+	    monitorIP = server.getAddress().getAddress().getHostAddress();
+	    this.dataBase = database;
+	    this.monitorName = monitorName;
 	    System.out.println("RestServer: server started");
 	}
+	
+	/// getters
+	public String getMonitorIP(){ return monitorIP; }
     
 	/// inner class
 	/**
@@ -40,38 +55,42 @@ public class RestServer {
 	 */
     class MyHandler implements HttpHandler {
         public void handle(HttpExchange t) throws IOException {
-        	System.out.println("Request method: " + t.getRequestMethod());
-        	System.out.println("Request headers: " + t.getRequestHeaders());
-        	System.out.println("Request URI: " + t.getRequestURI());
+        	//test
+        	//dataBase.testDataInsertToMetric();
+        	///
+        	
+        	System.out.println("RestServer:: Request method: " + t.getRequestMethod());
+        	//System.out.println("RestServer:: Request headers: " + t.getRequestHeaders());
+        	System.out.println("RestServer:: Request URI: " + t.getRequestURI());
         	
         	// path parsing
         	URI uri = t.getRequestURI();
         	String [] pathFragments = uri.getPath().split("/");
+     
+        	System.out.println(pathFragments.length);
         	try {
 	        	switch (pathFragments.length){
-	        		case 8: // path: /hosts/{id]/sensors/{id}/metrics/{id}/measurements
-	        			if (!pathFragments[7].equals("measurements"))
-	        				throw new Exception("Error, wrong path syntax with 'measurements'");
-	        		case 7: // path: /hosts/{id]/sensors/{id}/metrics/{id}
-	        			Integer.parseInt(pathFragments[6]);
-	        		case 6: // path: /hosts/{id}/sensors/{id}/metrics
+	        		case 8: // path: /hosts/{hostname}/sensors/{sensorname}/metrics/{metricname}/data
+	        			;//if (!pathFragments[7].equals("measurements"))
+	        			//	throw new Exception("Error, wrong path syntax with 'measurements'");
+	        		case 7: // path: /hosts/{hostname}/sensors/{sensorname}/metrics/{metricname}
+	        			//Integer.parseInt(pathFragments[6]);
+	        		case 6: // path: /hosts/{hostname}/sensors/{sensorname}/metrics
 	        			if (!pathFragments[5].equals("metrics"))
 	        				throw new Exception("Error, wrong path syntax with 'metrics'");
-	        		case 5: // path: /hosts/{id]/sensors/{id}
-	        			Integer.parseInt(pathFragments[4]);
-	        		case 4: // path: /hosts/{id}/sensors
+	        		case 5: // path: /hosts/{hostname}/sensors/{sensorname}
+	        			//Integer.parseInt(pathFragments[4]);
+	        		case 4: // path: /hosts/{hostname}/sensors
 	        			if (!pathFragments[3].equals("sensors"))
 	        				throw new Exception("Error, wrong path syntax with 'sensors'");
-	        		case 3: // path: /hosts/{id}      			
-	        			Integer.parseInt(pathFragments[2]);
+	        		case 3: // path: /hosts/{hostname}      			
+	        			//Integer.parseInt(pathFragments[2]);
 	        		case 2: // path: /hosts		
 	        			if (!pathFragments[1].equals("hosts"))
 	        				throw new Exception("Error, wrong path syntax with 'hosts'");	           		
 	        	}
-        	} catch (NumberFormatException e){
-        		System.err.println("Error with extractig ID from path");
         	} catch (Exception e) {
-        		System.err.println(e.getMessage());
+        		System.err.println("RestServer:: " + e.getMessage());
         	}
         	
         	
@@ -79,7 +98,7 @@ public class RestServer {
         	String reqMethod = t.getRequestMethod();
         	String response = null;
         	if (reqMethod.equals("GET"))
-        		response = readResource(t, pathFragments);
+        		response = readResource(t, pathFragments, uri.getQuery());
         	else if (reqMethod.equals("POST"))
         		response = createResource(t, pathFragments);
         	else if (reqMethod.equals("PUT"))
@@ -98,24 +117,21 @@ public class RestServer {
          * READ operation of CRUD in RESTful system. From HTTP GET method.
          * @param t 
          */
-        private String readResource(HttpExchange t, String [] pathFragments){  	
+        private String readResource(HttpExchange t, String [] pathFragments, String query){  	
         	
         	JSONObject obj = new JSONObject();
         	JSONObject tmpObj = null;
         	JSONArray list = null;
         	
-        	String hostName=null, sensorName=null, metricName=null;
+        	String hostName=null, sensorName=null, metricName=null, dataNumber = null;
         	DataBase.Host host = null;
         	DataBase.Sensor sensor = null;
-        	DataBase.Metric metric = null;
-        	
-        	//System.out.println("readResource: " + server.getAddress());
-        	String monitorIP = server.getAddress().getAddress().getHostAddress();
+        	DataBase.Metric metric = null;   	
         	
         	switch (pathFragments.length){
         		case 2: // path: {monitorURI}/hosts	
         			// get hosts list
-        			obj.put("name","monitor11");
+        			obj.put("name",monitorName);
                 	obj.put("href","http://"+monitorIP+"/hosts");
         			list = new JSONArray();
         			for (DataBase.Host tmpHost : dataBase.getHosts()){
@@ -129,7 +145,11 @@ public class RestServer {
         			break;
         		case 3: // path: {monitorURI}/hosts/{hostname}      			
 	    			// get specific host
-        			//hostID = Integer.parseInt(pathFragments[2]);			
+        			hostName = pathFragments[2];
+        			host = dataBase.getHost(hostName);
+        			obj.put("hostname", host.hostName);
+        			obj.put("ip", host.ip);
+        			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName);
 	    			break;
         		case 4: // path: {monitorURI}/hosts/{hostname}/sensors
         			// get sensors list of specific host	
@@ -139,11 +159,11 @@ public class RestServer {
         			obj.put("ip", host.ip);
         			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName);
         			list = new JSONArray();
-        			for (DataBase.Sensor tmpSensor : dataBase.getSensors(host.id)){
+        			for (DataBase.Sensor tmpSensor : dataBase.getSensors(host.hostName)){
         				tmpObj = new JSONObject();
         				tmpObj.put("sensorname", tmpSensor.sensorName);
-        				//tmpObj.put("owner", value);
-        				//tmpObj.put("rpm", value);
+        				tmpObj.put("owner", tmpSensor.login);
+        				tmpObj.put("rpm", tmpSensor.rpm);
         				tmpObj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+tmpSensor.sensorName);
         				list.add(tmpObj);
         			}
@@ -154,11 +174,11 @@ public class RestServer {
 	    			hostName = pathFragments[2];
 	    			sensorName = pathFragments[4];
 	    			host = dataBase.getHost(hostName);
-	    			sensor = dataBase.getSensor(host.id, sensorName);
+	    			sensor = dataBase.getSensor(hostName, sensorName);
+	    			obj.put("sensorname", sensor.sensorName);
+	    			obj.put("owner", sensor.login);
+	    			obj.put("rpm", sensor.rpm);
 	    			obj.put("hostname", host.hostName); 
-	    			obj.put("sensorname", sensor.sensorName);			
-	    			//obj.put("owner", value);
-    				//obj.put("rpm", value);
 	    			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName);
 	    			break;
 	    		case 6: // path: {monitorURI}/hosts/{hostname]/sensors/{sensorname}/metrics
@@ -166,17 +186,17 @@ public class RestServer {
 	    			hostName = pathFragments[2];
 	    			sensorName= pathFragments[4];
 	    			host = dataBase.getHost(hostName);
-	    			sensor = dataBase.getSensor(host.id, sensorName);
-	    			obj.put("hostname", host.hostName);
+	    			sensor = dataBase.getSensor(host.hostName, sensorName);
 	    			obj.put("sensorname", sensor.sensorName);
-	    			//obj.put("owner", value);
-    				//obj.put("rpm", value);
+	    			obj.put("hostname", host.hostName);	    			
+	    			obj.put("owner", sensor.login);
+    				obj.put("rpm", sensor.rpm);
 	    			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName);
         			list = new JSONArray();
         			for (DataBase.Metric tmpMetric : dataBase.getMetrics(sensor.id)){
         				tmpObj = new JSONObject();
-        				tmpObj.put("name", tmpMetric.name);
-        				tmpObj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+tmpMetric.name);
+        				tmpObj.put("name", tmpMetric.metricName);
+        				tmpObj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+tmpMetric.metricName);
         				list.add(tmpObj);
         			}
         			obj.put("metrics", list);
@@ -187,30 +207,62 @@ public class RestServer {
 	    			sensorName = pathFragments[4];
 	    			metricName = pathFragments[6];
 	    			host = dataBase.getHost(hostName);
-	    			sensor = dataBase.getSensor(host.id, sensorName);
+	    			sensor = dataBase.getSensor(host.hostName, sensorName);
 	    		 	metric = dataBase.getMetric(sensor.id, metricName);
 	    		 	obj.put("hostname", host.hostName);
 	    			obj.put("sensorname", sensor.sensorName);
-	    			obj.put("metricname", metric.name);
-	    			//obj.put("owner", value);
-    				//obj.put("rpm", value);
-    				obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+metric.name);
+	    			obj.put("metricname", metric.metricName);
+	    			obj.put("owner", sensor.login);
+    				obj.put("rpm", sensor.rpm);
+    				obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+metric.metricName);
 	    			break;
+	    		case 8: // path: {monitorURI}/hosts/{hostname}/sensors/{sensorname}/metrics/{metric1};{metric2}/data[&n=20]
+	    			hostName = pathFragments[2];
+	    			host = dataBase.getHost(hostName);
+	    			obj.put("hostname", host.hostName);
 	    			
-	    		/*case 8: // path: {monitorURI}/hosts/{id]/sensors/{id}/metrics/{id}/measurements
-	    			metricID = Integer.parseInt(pathFragments[6]);
-	    			obj.put("resource", "measurement");
-        			list = new JSONArray();
-        			for (DataBase.Measurement measurement : dataBase.getMeasurements(metricID)){
-        				tmpObj = new JSONObject();
-        				tmpObj.put("id", measurement.id);
-        				tmpObj.put("hostID", measurement.metricID);
-        				tmpObj.put("time", measurement.time);
-        				tmpObj.put("value", measurement.value);
-        				list.add(tmpObj);
-        			}	
+	    			sensorName = pathFragments[4];
+	    			sensor = dataBase.getSensor(host.hostName, sensorName);
+	    			obj.put("sensorname", sensor.sensorName);
+	    			obj.put("owner", sensor.login);
+	    			obj.put("rpm", sensor.rpm);
+	    			obj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics");
+
+	    			int data = 20;
+	    			try{
+	    				if (query.split("=").length == 2)
+	    					data = Integer.parseInt(query.split("=")[1]);
+	    			}
+	    			catch (NumberFormatException e){
+	    				System.err.println("RestServer:: wrong number in query:"+query);
+	    			}
+	    			data = data < 1 ? 20 : data > 100 ? 100 : data;
+	    			
+	    			System.out.println("data: "+data);
+    				for(String dd:pathFragments[6].split(";"))
+    					System.out.println("metric:" +dd);
+	    			
+	    			
+	    			list = new JSONArray();
+	    			for(String tmpMetricName: pathFragments[6].split(";"))
+	    			{
+	    				metric = dataBase.getMetric(sensor.id, tmpMetricName);
+	    				tmpObj = new JSONObject(); tmpObj.put("name", metric.metricName);
+	    				list.add(tmpObj);
+	    				tmpObj = new JSONObject(); tmpObj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+sensor.sensorName+"/metrics/"+metric.metricName);
+	    				list.add(tmpObj);
+		    			JSONArray innerList = new JSONArray();
+		    			for (DataBase.Metric tmpMetric : dataBase.getMetricData(sensor.id, metric.metricName, data)){
+		    				tmpObj = new JSONObject();
+		    				tmpObj.put(tmpMetric.time, tmpMetric.value);
+		    				innerList.add(tmpObj);
+		    			}
+		    			tmpObj = new JSONObject(); tmpObj.put("data", innerList);
+		    			list.add(tmpObj);
+	    			}
+	    			obj.put("metrics", list);
+
 	    			break;
-	    			*/
 	    	}
         	
         	return obj.toJSONString();
