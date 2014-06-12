@@ -1,25 +1,23 @@
 package monitor;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Scanner;
+import java.util.HashMap;
+
+import monitor.DataBase.Metric;
+
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
 
 /**
  * REST server implementation based on com.sun.net.httpserver.HttpServer.
@@ -32,18 +30,24 @@ public class RestServer {
 	private String monitorName = null;
 	private String monitorIP = null;
 	
+	private HashMap<String,CoumpoundMetric> coumpoundMetrics;
+	
 	
 	/// constructor
 	public RestServer (String monitorName, DataBase database) throws IOException {
 		System.out.println(InetAddress.getLocalHost());
 		server = HttpServer.create(new InetSocketAddress(InetAddress.getLocalHost(),34899), 0);
-	    server.createContext("/", new MyHandler());
+		MyHandler handler = new MyHandler();
+	    server.createContext("/", handler);
 	    server.setExecutor(null); // creates a default executor
 	    server.start();
 	    monitorIP = server.getAddress().getAddress().getHostAddress();
 	    this.dataBase = database;
 	    this.monitorName = monitorName;
+	    coumpoundMetrics = new HashMap<String,CoumpoundMetric>();
 	    System.out.println("RestServer: server started");
+	    
+	    //handler.createResource(null,null);
 	}
 	
 	/// getters
@@ -96,20 +100,14 @@ public class RestServer {
         	
         	// calling REST methods
         	String reqMethod = t.getRequestMethod();
-        	String response = null;
         	if (reqMethod.equals("GET"))
-        		response = readResource(t, pathFragments, uri.getQuery());
+        		readResource(t, pathFragments, uri.getQuery());
         	else if (reqMethod.equals("POST"))
-        		response = createResource(t, pathFragments);
+        		createResource(t, pathFragments);
         	else if (reqMethod.equals("PUT"))
-        		response = updateResource(t, pathFragments);
+        		updateResource(t, pathFragments);
         	else if (reqMethod.equals("DELETE"))
-        		response = deleteResource(t, pathFragments);
-        	        	
-            t.sendResponseHeaders(200, response.length());
-            OutputStream os = t.getResponseBody();
-            os.write(response.getBytes());
-            os.close();
+        		deleteResource(t, pathFragments);
         }
         
         
@@ -117,7 +115,7 @@ public class RestServer {
          * READ operation of CRUD in RESTful system. From HTTP GET method.
          * @param t 
          */
-        private String readResource(HttpExchange t, String [] pathFragments, String query){  	
+        private void readResource(HttpExchange t, String [] pathFragments, String query){  	
         	
         	JSONObject obj = new JSONObject();
         	JSONObject tmpObj = null;
@@ -265,34 +263,217 @@ public class RestServer {
 	    			break;
 	    	}
         	
-        	return obj.toJSONString();
+        	String response = obj.toJSONString();
+        	try {
+				t.sendResponseHeaders(200, response.length());
+				OutputStream os = t.getResponseBody();
+	        	os.write(response.getBytes());
+	        	os.close();
+			} catch (IOException e) {
+				System.err.println("RestServer:readResource: Error with writing response");
+				e.printStackTrace();
+			}
         }
         
         /**
          * CREATE operation of CRUD in RESTful system. From HTTP POST method
          * @param t
          */
-        private String createResource(HttpExchange t, String [] pathFragments){
-        	String response = null;
-        	return response;
+		private void createResource(HttpExchange t, String [] pathFragments){
+        	// this method for now is used only to create Coumpund metrics (moving average), sa the URI will be as follow
+        	// {monitorURI}/hosts/{hostname}/sensors/{sensorname}/metrics/{metricname}
+
+			BufferedReader br=null;
+			String body=null;
+			try {
+				br = new BufferedReader(new InputStreamReader(t.getRequestBody(),"utf-8"));
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+        	JSONObject obj=(JSONObject)JSONValue.parse(br);
+        	System.out.println("RestServer:createResource: body: "+obj);
+        	String name = (String)obj.get("cmpoundMetricName");
+        	int average = Integer.parseInt((String)obj.get("average"));
+        	int rpm = Integer.parseInt((String)obj.get("rpm"));
+        	String login = (String)obj.get("login");
+        	String password = (String)obj.get("password");
+        	
+        	String response=null;
+        	int statusCode=200; // OK
+        	// authentication check
+        	DataBase.User user = dataBase.getUser(login);       
+        	
+        	if (user == null){ 
+        		response = "{\"message\":\"Bad Login\"}";}
+        	else if (!user.password.equals(password)){
+        		response = "{\"message\":\"Bad Password\"}";
+        	}
+        	if (response != null){
+        		statusCode = 401; // Unauthorized
+        	}
+        	else { // autehntication passed
+	        	
+	        	// check that name already exists
+	        	if(coumpoundMetrics.get(name) != null){ // elements exists
+	        		response = "{\"message\":\"Specified name already exists\"}";
+	        		statusCode = 500; // Internal Server Error
+	        	}
+	        	else{ // create new metric
+	        		String hostName = pathFragments[2];
+	    			String sensorName = pathFragments[4];
+	    			String primaryMetricName = pathFragments[6];
+	        		int sensorId = dataBase.getSensor(hostName, sensorName).id;
+		        	
+	        		CoumpoundMetric newMetric = new CoumpoundMetric(name,primaryMetricName,average,rpm,login,password,sensorId);
+		        	coumpoundMetrics.put(name, newMetric);
+	        		
+	        		(new Thread(newMetric)).start();
+	        		response = "{\"message\":\"New metric started\"}";
+	        		statusCode = 201; // Created
+	        	}
+        	}
+        	
+        	// send response
+        	try {
+        		t.sendResponseHeaders(statusCode, response.length());
+        		OutputStream os = t.getResponseBody();
+				os.write(response.getBytes());
+				os.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+        	System.out.println("RestServer:createResource: coumponundMetrics amount:"+coumpoundMetrics.size());      	
         }
         
         /**
          * UPDATE operation of CRUD in RESTful system. From HTTP POST, PUT methods
          * @param t
          */
-        private String updateResource(HttpExchange t, String [] pathFragments){
-        	String response = null;
-        	return response;
+        private void updateResource(HttpExchange t, String [] pathFragments){
+        	String response = null;   	
         }
         
         /**
          * DELETE operation of CRUD in RESTful system. From HTTP DELETE method.
          * @param t
          */
-        private String deleteResource(HttpExchange t, String [] pathFragments){  
-        	String response = null;
-        	return response;
+        private void deleteResource(HttpExchange t, String [] pathFragments){
+        	// this method for now is used only to delete Coumpund metrics (moving average), sa the URI will be as follow
+        	// {monitorURI}/hosts/{hostname}/sensors/{sensorname}/metrics/{coumpoundmetricname}
+        	String coumpoundMetricName = pathFragments[6];
+        	BufferedReader br=null;
+			String body=null;
+			try {
+				br = new BufferedReader(new InputStreamReader(t.getRequestBody(),"utf-8"));
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+        	JSONObject obj=(JSONObject)JSONValue.parse(br);
+        	System.out.println("RestServer:deleteResource: body: "+obj);
+        	String login = (String)obj.get("login");
+        	String password = (String)obj.get("password");
+        	
+        	String response=null;
+        	int statusCode=200; // OK
+        	// authentication check
+        	DataBase.User user = dataBase.getUser(login);       
+        	
+        	if (user == null){ 
+        		response = "{\"message\":\"Bad Login\"}";}
+        	else if (!user.password.equals(password)){
+        		response = "{\"message\":\"Bad Password\"}";
+        	}
+        	if (response != null){
+        		statusCode = 401; // Unauthorized
+        	}
+        	else { // autehntication passed
+        		CoumpoundMetric coumpoundMetric = coumpoundMetrics.get(coumpoundMetricName);
+        		if(coumpoundMetric==null){
+        			statusCode = 404; // Not Found
+        			response = "{\"message\":\"Specified Metric not exists\"}";
+            	}
+        		else{
+        			// stop thread
+        			coumpoundMetric.stop();
+        			// delete from HashMap
+        			coumpoundMetrics.remove(coumpoundMetricName);        			
+        			// set response
+        			statusCode = 200; // OK
+        			response = "{\"message\":\"Specified Metric deleted\"}";       			
+        		}
+        	}
+        	
+        	// send response
+        	try {
+        		t.sendResponseHeaders(statusCode, response.length());
+        		OutputStream os = t.getResponseBody();
+				os.write(response.getBytes());
+				os.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+        	System.out.println("RestServer:deleteResource: coumponundMetrics amount:"+coumpoundMetrics.size());   
         }
+        
+    }
+    
+    
+    /**
+     * Class to handle coumpound metrics (moving averages), each in separate thread.
+     */
+    class CoumpoundMetric implements Runnable {
+    	public String name;
+    	public String primaryMetricName;
+    	public int average;
+    	public int rpm;
+    	public String login;
+    	public String password;
+    	public int sensorId;
+    	public boolean running = true;
+    	//DataBase database;
+    	
+		public CoumpoundMetric(String name, String primaryMetricName, int average, int rpm, String login,String password, int sensorId) {
+			this.name = name;
+			this.primaryMetricName =primaryMetricName;
+			this.average = average;
+			this.rpm = rpm;
+			this.login = login;
+			this.password = password;
+			this.sensorId = sensorId;
+			
+			//this.database = database;
+		}
+
+		@Override
+		public void run() {
+			System.out.println("RestServer.CoumpoundMetric: New metric created- name:"+this.name+", average:"+this.average+
+					", rpm:"+this.rpm+", owner:"+this.login);
+			while (running){
+				try {
+					Thread.sleep(3000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				
+				int counter=0;
+				double value=0;
+				for(Metric m : dataBase.getMetricData(this.sensorId, this.primaryMetricName, this.average)){
+					++counter;
+					value += Double.parseDouble(m.value);
+				}
+				value /= counter;
+				DataBase.Metric metric = dataBase.new Metric(0,this.sensorId,this.name,""+System.currentTimeMillis(),""+value);
+				dataBase.addMetric(metric);
+			}
+			// delete data from db
+			dataBase.deleteCompoundMetric(this.name);
+			System.out.println("RestServer.CoumpoundMetric: Metric deleted- name:"+this.name+", average:"+this.average+
+					", rpm:"+this.rpm+", owner:"+this.login);
+		}    	
+		
+		public void stop(){
+			running = false;
+			System.out.println("Running="+running);		
+		}
     }
 }

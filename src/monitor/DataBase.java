@@ -322,6 +322,34 @@ public class DataBase {
     	return metric;
     }
     
+    public void addMetric(Metric metric){
+    	try {
+	    	Statement stat = conn.createStatement();
+	    	String query="INSERT INTO metric (sensorid,metricname,time,value)"+
+	    	"VALUES ("+metric.id+", '"+metric.metricName+"', '"+metric.time+"', '"+metric.value+"')";
+	    	stat.executeUpdate(query);
+	        stat.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Delete metric pointed by parameter coumpoundMetricName
+     * @param coumpoundMetricName
+     * @throws SQLException
+     */
+    public void deleteCompoundMetric(String coumpoundMetricName){
+    	try {
+	    	Statement stat = conn.createStatement();
+	    	String query="DELETE FROM metric WHERE metricname='"+coumpoundMetricName+"'";
+	    	stat.executeUpdate(query);
+	        stat.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    
     /**
      * Get data of specific metric
      * @param sensorID
@@ -359,32 +387,7 @@ public class DataBase {
         }
     }
     
-//    /**
-//     * Get measurements list of specific metric
-//     * @param metricID metric id
-//     * @return measurements list
-//     */
-//    public List<Measurement> getMeasurements(int metricID){
-//    	List<Measurement> measurements = new LinkedList<Measurement>();
-//        try {
-//        	Statement stat = conn.createStatement();
-//            ResultSet result = stat.executeQuery("SELECT * FROM measurement where metricID="+metricID);
-//            int id;
-//            String time;
-//            double value;
-//            while(result.next()) {
-//                id = result.getInt("id");
-//                time = result.getString("time");
-//                value = result.getDouble("value");
-//                measurements.add(new Measurement(id, metricID, time, value));
-//            }
-//            stat.close();
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//            return null;
-//        }      
-//        return measurements;
-//    }
+
     
     /// inner classes
     /**
