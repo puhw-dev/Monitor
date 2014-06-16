@@ -27,11 +27,16 @@ public class Monitor {
 	private RestServer restServer;
 	private DataBase dataBase;
 	
+	/**
+     * READABLE parameters in runtime - if necessary expand for more
+     */
+    private String monitorName, catalogURL;
+	
 	/// contructor
-	public Monitor() throws IOException{
-		dataBase = new DataBase();
-		restServer = new RestServer(monitorName, dataBase);
+	public Monitor() throws IOException{		
+		dataBase = new DataBase();	
 		readParamteres("configure.properties");
+		restServer = new RestServer(this.monitorName, dataBase);	
 		registerInCatalog();
 		//changeMonitorEntryInCatalog();
 		//deleteMonitorEntryInCatalog();
@@ -44,7 +49,7 @@ public class Monitor {
 	private void registerInCatalog(){	
 		try {
 			// Construct data
-			String data = "{\"name\":\""+monitorName+"\",\"ip\":\""+restServer.getMonitorIP()+":8889\"}";
+			String data = "{\"name\":\""+this.monitorName+"\",\"ip\":\""+restServer.getMonitorIP()+":8889\"}";
 			String urlString = catalogURL+"/monitors";
 			URL url = new URL(urlString);
 			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -69,8 +74,8 @@ public class Monitor {
 	private void changeMonitorEntryInCatalog(){
 		try {
 			// Construct data
-			String data = "{\"ip\":\"89.68.69.22:8889\"}";
-			String urlString = catalogURL+"/monitors/Real_Monitor_that_should_work";
+			String data = "{\"ip\":\"89.68.69.22:8898\"}";
+			String urlString = catalogURL+"/monitors/fatcat_2";
 			URL url = new URL(urlString);
 			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 			conn.setRequestMethod("POST");
@@ -108,11 +113,7 @@ public class Monitor {
 		}
 	}
 	
-	/**
-     * READABLE parameters in runtime - if necessary expand for more
-     */
-    private String monitorName, catalogURL;
-    
+	
     /**
      * READ parameters in runtime
      * @param fileName

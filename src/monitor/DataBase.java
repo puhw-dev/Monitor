@@ -71,11 +71,12 @@ public class DataBase {
         		+ "metricname text, time text, value text, PRIMARY KEY (id), FOREIGN KEY (sensorid)	REFERENCES SENSOR (id) )";
         try {
             Statement stat = conn.createStatement();
-            stat.execute(createUser);
-            //stat.execute(createHost);
-            stat.execute(createSensor);
-            stat.execute(createMetric);
-            //stat.execute(createMeasurement);
+            stat.executeUpdate(createUser);
+            //stat.executeUpdate(createHost);
+            stat.executeUpdate(createSensor);
+            stat.executeUpdate(createMetric);
+            stat.close();
+            //stat.executeUpdate(createMeasurement);
         } catch (SQLException e) {
             System.err.println("Error in creating tables");
             e.printStackTrace();
@@ -94,7 +95,8 @@ public class DataBase {
     	try {
         	Statement stat = conn.createStatement();
         	stat.executeUpdate("INSERT INTO Users (login,password) VALUES ('"+user.login+"','"+user.password+"')");
-            stat.close();
+        	//conn.commit();
+        	stat.close();         
         } catch (SQLException e) {
         	System.err.println("add User err: " + e.getMessage());
             e.printStackTrace();
@@ -119,6 +121,7 @@ public class DataBase {
                 password = result.getString("password");            
                 users.add(new User(login, password));
             }
+            result.close();
             stat.close();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -141,6 +144,7 @@ public class DataBase {
             if(result.next()) {
                 user = new User(login = result.getString("login"), password = result.getString("password"));            
             }
+            result.close();
             stat.close();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -164,6 +168,7 @@ public class DataBase {
                 ip = result.getString("hostip");            
                 hosts.add(new Host(hostName, ip));
             }
+            result.close();
             stat.close();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -202,10 +207,11 @@ public class DataBase {
     	Host host = null;
     	try {
         	Statement stat = conn.createStatement();
-        	ResultSet result = stat.executeQuery("SELECT * FROM sensor where hostname='"+hostName+"'");
+        	ResultSet result = stat.executeQuery("SELECT DISTINCT * FROM sensor where hostname='"+hostName+"'");
         	if(result.next()){
         		host = new Host(result.getString("hostname"), result.getString("hostip"));
         	}
+        	result.close();
             stat.close();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -223,7 +229,7 @@ public class DataBase {
     	List<Sensor> sensors = new LinkedList<Sensor>();
         try {
         	Statement stat = conn.createStatement();
-            ResultSet result = stat.executeQuery("SELECT * FROM sensor where hostname='"+hostName+"'");
+            ResultSet result = stat.executeQuery("SELECT DISTINCT * FROM sensor where hostname='"+hostName+"'");
             int id;
             String login, hostIP, sensorName, sensorType;
             int rpm; 
@@ -236,6 +242,7 @@ public class DataBase {
                 rpm = result.getInt("rpm");
                 sensors.add(new Sensor(id, login, hostName, hostIP, sensorName, sensorType, rpm));
             }
+            result.close();
             stat.close();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -261,6 +268,7 @@ public class DataBase {
          				result.getString("hostip"), result.getString("sensorName"), result.getString("sensorType"),
          				result.getInt("rpm"));
         	}
+        	result.close();
             stat.close();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -290,6 +298,7 @@ public class DataBase {
                 //value = result.getString("value");
                 metrics.add(new Metric(0, sensorID, metricName, "test", "test"));
             }
+            result.close();
             stat.close();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -314,6 +323,7 @@ public class DataBase {
         	if(result.next()){
          		metric = new Metric(result.getInt("id"), sensorID, metricName, result.getString("time"), result.getString("value"));
         	}
+        	result.close();
             stat.close();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -326,9 +336,10 @@ public class DataBase {
     	try {
 	    	Statement stat = conn.createStatement();
 	    	String query="INSERT INTO metric (sensorid,metricname,time,value)"+
-	    	"VALUES ("+metric.id+", '"+metric.metricName+"', '"+metric.time+"', '"+metric.value+"')";
+	    	"VALUES ("+metric.sensorID+", '"+metric.metricName+"', '"+metric.time+"', '"+metric.value+"')";
 	    	stat.executeUpdate(query);
-	        stat.close();
+	    	//conn.commit();
+	        stat.close();        
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -344,6 +355,7 @@ public class DataBase {
 	    	Statement stat = conn.createStatement();
 	    	String query="DELETE FROM metric WHERE metricname='"+coumpoundMetricName+"'";
 	    	stat.executeUpdate(query);
+	    	//conn.commit();
 	        stat.close();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -366,6 +378,7 @@ public class DataBase {
         	while(result.next()){
          		metrics.add (new Metric(result.getInt("id"), sensorID, metricName, result.getString("time"), result.getString("value")));
         	}
+        	result.close();
             stat.close();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -380,7 +393,7 @@ public class DataBase {
         	Statement stat = conn.createStatement();
         	stat.executeQuery("INSERT INTO metric (sensorid,metricname,time,value) VALUES "
         			+ "(1,'freeMemory','"+System.currentTimeMillis()+"'," + generator.nextInt(20)+")");
- 
+        	//conn.commit();
             stat.close();
         } catch (SQLException e) {
             e.printStackTrace();

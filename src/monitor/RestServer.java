@@ -63,15 +63,16 @@ public class RestServer {
         	//dataBase.testDataInsertToMetric();
         	///
         	
-        	System.out.println("RestServer:: Request method: " + t.getRequestMethod());
+        	//System.out.println("RestServer:: Request method: " + t.getRequestMethod());
         	//System.out.println("RestServer:: Request headers: " + t.getRequestHeaders());
-        	System.out.println("RestServer:: Request URI: " + t.getRequestURI());
+        	//System.out.println("RestServer:: Request URI: " + t.getRequestURI());
+        	System.out.println("RestServer:: "+t.getRequestMethod()+"  " + t.getRequestURI());
         	
         	// path parsing
         	URI uri = t.getRequestURI();
         	String [] pathFragments = uri.getPath().split("/");
      
-        	System.out.println(pathFragments.length);
+        	//System.out.println(pathFragments.length);
         	try {
 	        	switch (pathFragments.length){
 	        		case 8: // path: /hosts/{hostname}/sensors/{sensorname}/metrics/{metricname}/data
@@ -160,6 +161,7 @@ public class RestServer {
         			for (DataBase.Sensor tmpSensor : dataBase.getSensors(host.hostName)){
         				tmpObj = new JSONObject();
         				tmpObj.put("sensorname", tmpSensor.sensorName);
+        				tmpObj.put("sensortype", tmpSensor.sensorType);
         				tmpObj.put("owner", tmpSensor.login);
         				tmpObj.put("rpm", tmpSensor.rpm);
         				tmpObj.put("href", "http://"+monitorIP+"/hosts/"+host.hostName+"/sensors/"+tmpSensor.sensorName);
@@ -174,6 +176,7 @@ public class RestServer {
 	    			host = dataBase.getHost(hostName);
 	    			sensor = dataBase.getSensor(hostName, sensorName);
 	    			obj.put("sensorname", sensor.sensorName);
+	    			obj.put("sensortype", sensor.sensorType);
 	    			obj.put("owner", sensor.login);
 	    			obj.put("rpm", sensor.rpm);
 	    			obj.put("hostname", host.hostName); 
@@ -186,6 +189,7 @@ public class RestServer {
 	    			host = dataBase.getHost(hostName);
 	    			sensor = dataBase.getSensor(host.hostName, sensorName);
 	    			obj.put("sensorname", sensor.sensorName);
+	    			obj.put("sensortype", sensor.sensorType);
 	    			obj.put("hostname", host.hostName);	    			
 	    			obj.put("owner", sensor.login);
     				obj.put("rpm", sensor.rpm);
@@ -236,9 +240,9 @@ public class RestServer {
 	    			}
 	    			data = data < 1 ? 20 : data > 100 ? 100 : data;
 	    			
-	    			System.out.println("data: "+data);
-    				for(String dd:pathFragments[6].split(";"))
-    					System.out.println("metric:" +dd);
+	    			//System.out.println("data: "+data);
+    				//for(String dd:pathFragments[6].split(";"))
+    				//	System.out.println("metric:" +dd);
 	    			
 	    			
 	    			list = new JSONArray();
@@ -292,7 +296,7 @@ public class RestServer {
 			}
         	JSONObject obj=(JSONObject)JSONValue.parse(br);
         	System.out.println("RestServer:createResource: body: "+obj);
-        	String name = (String)obj.get("cmpoundMetricName");
+        	String name = (String)obj.get("compoundMetricName");
         	int average = Integer.parseInt((String)obj.get("average"));
         	int rpm = Integer.parseInt((String)obj.get("rpm"));
         	String login = (String)obj.get("login");
@@ -425,14 +429,14 @@ public class RestServer {
     	public String name;
     	public String primaryMetricName;
     	public int average;
-    	public int rpm;
+    	public double rpm;
     	public String login;
     	public String password;
     	public int sensorId;
     	public boolean running = true;
     	//DataBase database;
     	
-		public CoumpoundMetric(String name, String primaryMetricName, int average, int rpm, String login,String password, int sensorId) {
+		public CoumpoundMetric(String name, String primaryMetricName, int average, double rpm, String login,String password, int sensorId) {
 			this.name = name;
 			this.primaryMetricName =primaryMetricName;
 			this.average = average;
@@ -449,12 +453,7 @@ public class RestServer {
 			System.out.println("RestServer.CoumpoundMetric: New metric created- name:"+this.name+", average:"+this.average+
 					", rpm:"+this.rpm+", owner:"+this.login);
 			while (running){
-				try {
-					Thread.sleep(3000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-				
+
 				int counter=0;
 				double value=0;
 				for(Metric m : dataBase.getMetricData(this.sensorId, this.primaryMetricName, this.average)){
@@ -462,8 +461,14 @@ public class RestServer {
 					value += Double.parseDouble(m.value);
 				}
 				value /= counter;
-				DataBase.Metric metric = dataBase.new Metric(0,this.sensorId,this.name,""+System.currentTimeMillis(),""+value);
+				DataBase.Metric metric = dataBase.new Metric(0,this.sensorId,this.name,""+System.currentTimeMillis() / 1000L,""+value);
 				dataBase.addMetric(metric);
+				
+				try {
+					Thread.sleep((long)(1000*60*1/this.rpm));
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 			}
 			// delete data from db
 			dataBase.deleteCompoundMetric(this.name);
