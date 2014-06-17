@@ -10,7 +10,9 @@ CLASSES = \
 	 monitor/Monitor.java\
 	 monitor/DataBase.java
 
-default: classes
+default:
+	mkdir -p logs;\
+	${MAKE} classes
 
 classes: $(CLASSES:.java=.class)
 
