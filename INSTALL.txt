@@ -17,6 +17,7 @@ The files tree should looks like:
  | config/
  |           | client_config.json
  |           | server_config.json
+ | logs/
  | src/
           | client.py
           | crypt.py
@@ -35,16 +36,25 @@ The files tree should looks like:
  
  --- MAKEFILE ---
  Then you can use makefile:
+ Building:
  target default - to build project
- target run     - to run
+ Running:
+ target run_java     - to run Monitor server - HTTP part
+ target run_python   - to run Monitor server - UPD part
+ target run_all      - to run both servers :]
  
  Or do it yourself as described below:
- --- COMPILATION ---
+ --- COMPILATION --- 
  In project home directory
  $ javac -cp "json-simple-1.1.1.jar:sqlite-jdbc-3.7.2.jar" monitor/Monitor.java monitor/RestServer.java monitor/DataBase.java
  
  --- RUN ---
+ -- HTTP sever ---
  Make sure to kill previous running process, because it's block host port.
  In project home directory.
  $ java -classpath ".:sqlite-jdbc-3.7.2.jar:json-simple-1.1.1.jar" monitor.Monitor
+ -- UDP server ---
+ Make sure you are using python version 3.4 or higher
+ cd src
+ python server.py
  
